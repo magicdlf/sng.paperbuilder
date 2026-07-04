@@ -1,0 +1,392 @@
+/* ---- 实时编号装饰 ---- */
+
+.num-prefix {
+  font-weight: 700;
+  color: #4c463c;
+  user-select: none;
+}
+
+.table-caption-line {
+  display: block;
+  text-align: center;
+  font-size: 0.9em;
+  color: #4c463c;
+  margin: -0.4em 0 1em;
+  user-select: none;
+}
+
+.table-caption-line:empty {
+  display: none;
+}
+
+.eq-number {
+  display: block;
+  text-align: right;
+  margin-top: -2.2em;
+  margin-bottom: 1em;
+  color: #7a7468;
+  font-size: 0.85em;
+  font-family: var(--font-mono);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ---- 图节点 ---- */
+
+.figure-view {
+  position: relative;
+  margin: 1.2em auto;
+  text-align: center;
+}
+
+.figure-view.selected img {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.figure-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 6px auto 0;
+  padding: 6px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  width: fit-content;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.figure-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.figure-caption {
+  margin-top: 0.4em;
+  font-size: 0.9em;
+  color: #4c463c;
+  min-height: 1.2em;
+}
+
+.figure-caption.is-empty::before {
+  content: attr(data-placeholder);
+  color: #b6b0a4;
+}
+
+.label-input {
+  width: 110px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* ---- 引用 chip ---- */
+
+.ref-chip {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0.02em 0.35em;
+  font-size: 0.86em;
+  font-family: var(--font-ui);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.ref-chip.cite {
+  background: #e8f3ec;
+  color: var(--ok);
+}
+
+.ref-chip.missing {
+  background: #fdeeea;
+  color: var(--danger);
+}
+
+.ref-chip.selected {
+  outline: 2px solid var(--accent);
+}
+
+/* ---- 公式弹窗 ---- */
+
+.math-popover {
+  z-index: 60;
+  width: 460px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(30, 25, 15, 0.22);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.math-popover textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.math-preview {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: #faf9f6;
+  border-radius: 7px;
+  overflow-x: auto;
+}
+
+.math-error {
+  color: var(--danger);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.math-error .badge {
+  align-self: flex-start;
+  color: var(--warn);
+  border-color: currentColor;
+}
+
+.math-popover-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.math-popover-footer .spacer {
+  flex: 1;
+}
+
+/* ---- 工具栏下拉 ---- */
+
+.toolbar {
+  position: relative;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 260px;
+  z-index: 50;
+  min-width: 300px;
+  max-width: 420px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(30, 25, 15, 0.18);
+  padding: 6px;
+}
+
+.dropdown-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  padding: 8px 10px 4px;
+}
+
+.dropdown-empty {
+  padding: 4px 10px 8px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dropdown-item:hover {
+  background: var(--accent-soft);
+}
+
+.dropdown-item code {
+  color: var(--text-dim);
+  font-size: 11.5px;
+}
+
+.dropdown-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 10px 10px;
+}
+
+.dropdown-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.dropdown-form input {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.align-row {
+  display: flex;
+  gap: 6px;
+}
+
+.align-row select {
+  flex: 1;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.table-ops {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn.danger {
+  color: var(--danger);
+  border-color: #eccfc6;
+}
+
+/* ---- 参考文献面板 ---- */
+
+.references-panel {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 24px 120px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.references-header h2 {
+  margin: 0 0 4px;
+}
+
+.references-header p {
+  margin: 0 0 16px;
+  font-size: 13px;
+}
+
+.reference-list {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reference-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.ref-number {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-dim);
+  padding-top: 2px;
+}
+
+.ref-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ref-title {
+  font-size: 14px;
+}
+
+.ref-meta {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.ref-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.reference-form {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reference-form h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.reference-form label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.reference-form label span {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.reference-form input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.reference-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}

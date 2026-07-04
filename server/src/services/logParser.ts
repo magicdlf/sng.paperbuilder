@@ -38,9 +38,10 @@ export function parseTexLog(log: string): ParsedLog {
       continue
     }
 
-    // ! LaTeX Error: File `foo' not found. 等无行号错误
-    if (line.startsWith('! ')) {
-      errors.push({ line: null, message: line.slice(2, 302) })
+    // "! LaTeX Error: …" / "!pdfTeX error: …" 等无行号错误
+    const bang = line.match(/^!\s?(.+)$/)
+    if (bang) {
+      errors.push({ line: null, message: bang[1]!.slice(0, 300) })
       continue
     }
 

@@ -109,5 +109,8 @@ export function useProject() {
 
   const getMd = useCallback((id: string): string => mdRef.current.get(id) ?? '', [])
 
-  return { snapshot, loadError, reload, updateSection, flushSection, getMd, saveStates }
+  /** 全部章节的最新 md（含未保存编辑），供实时编号计算 */
+  const getAllMd = useCallback((): Map<string, string> => new Map(mdRef.current), [])
+
+  return { snapshot, loadError, reload, updateSection, flushSection, getMd, getAllMd, saveStates }
 }

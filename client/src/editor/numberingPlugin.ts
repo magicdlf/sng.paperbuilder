@@ -1,0 +1,105 @@
+// 实时编号（与 LaTeX 计数规则一致）：
+// - figure：题注前缀 "Figure N: "（widget decoration）
+// - table：表下方题注行 "Table N: caption"（widget）
+// - 带 label 的 blockMath：右侧 "(N)" 标签（widget）
+// 起始计数来自 LabelIndex.sectionStart[当前章节]，随文档变化每事务重建。
+import { Extension } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import type { Node as PMNode } from '@tiptap/pm/model'
+import type { SectionCounters } from '@himcm/shared'
+
+export interface NumberingStorage {
+  counters: SectionCounters | null
+}
+
+declare module '@tiptap/core' {
+  interface Storage {
+    himcmNumbering: NumberingStorage
+  }
+}
+
+const key = new PluginKey('himcmNumbering')
+
+function widget(className: string, text: string): HTMLElement {
+  const el = document.createElement('span')
+  el.className = className
+  el.textContent = text
+  return el
+}
+
+function buildDecorations(doc: PMNode, counters: SectionCounters | null): DecorationSet {
+  if (!counters) return DecorationSet.empty
+  const decos: Decoration[] = []
+  let fig = counters.fig
+  let tbl = counters.tbl
+  let eq = counters.eq
+
+  doc.descendants((node, pos) => {
+    switch (node.type.name) {
+      case 'figure': {
+        fig++
+        // 题注开头插入 "Figure N: "
+        decos.push(
+          Decoration.widget(pos + 1, () => widget('num-prefix', `Figure ${fig}: `), { side: -1 })
+        )
+        return false
+      }
+      case 'table': {
+        tbl++
+        const caption = String(node.attrs.caption ?? '')
+        const label = node.attrs.label ? `  {#${node.attrs.label}}` : ''
+        decos.push(
+          Decoration.widget(pos + node.nodeSize, () =>
+            widget('table-caption-line', `Table ${tbl}: ${caption || '（点击工具栏「表格设置」添加题注）'}${label}`)
+          )
+        )
+        return true
+      }
+      case 'blockMath': {
+        if (node.attrs.label) {
+          eq++
+          decos.push(
+            Decoration.widget(pos + node.nodeSize, () =>
+              widget('eq-number', `(${eq})  {#${node.attrs.label}}`)
+            )
+          )
+        }
+        return false
+      }
+      default:
+        return true
+    }
+  })
+  return DecorationSet.create(doc, decos)
+}
+
+export const NumberingExtension = Extension.create<Record<string, never>, NumberingStorage>({
+  name: 'himcmNumbering',
+
+  addStorage() {
+    return { counters: null }
+  },
+
+  addProseMirrorPlugins() {
+    const getCounters = () => this.storage.counters
+    return [
+      new Plugin({
+        key,
+        state: {
+          init: (_config, state) => buildDecorations(state.doc, getCounters()),
+          apply: (tr, old, _oldState, newState) => {
+            // 文档变化或外部触发（空事务）时重建；小文档全量重建成本可忽略
+            if (!tr.docChanged && !tr.getMeta('himcmNumbering')) return old
+            return buildDecorations(newState.doc, getCounters())
+          },
+        },
+        props: {
+          decorations(state) {
+            return this.getState(state)
+          },
+        },
+      }),
+    ]
+  },
+})

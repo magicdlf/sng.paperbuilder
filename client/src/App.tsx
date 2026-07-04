@@ -1,17 +1,54 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { buildLabelIndex, mdToDoc, type LabelIndex, type ReferencesFile } from '@himcm/shared'
 import { api } from './api.ts'
 import { useProject } from './hooks/useProject.ts'
 import { Editor } from './editor/Editor.tsx'
+import type { NumberingData } from './editor/NumberingContext.ts'
 import { SectionList } from './panels/SectionList.tsx'
 import { RightPanel, type PanelTab } from './panels/RightPanel.tsx'
 import { CompilePanel } from './panels/CompilePanel.tsx'
+import { ReferencesPanel } from './panels/ReferencesPanel.tsx'
 
 export function App() {
-  const { snapshot, loadError, reload, updateSection, flushSection, getMd, saveStates } = useProject()
+  const { snapshot, loadError, reload, updateSection, flushSection, getMd, getAllMd, saveStates } = useProject()
   const [activeId, setActiveId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [panel, setPanel] = useState<PanelTab | null>(null)
   const [compileRequestId, setCompileRequestId] = useState(0)
+  const [labelIndex, setLabelIndex] = useState<LabelIndex | null>(null)
+  const [references, setReferences] = useState<ReferencesFile>({ version: 1, references: [] })
+  const numberingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ---- 实时编号：从全部章节（含未保存编辑）重建 LabelIndex ----
+  const recomputeNumbering = useCallback(() => {
+    if (!snapshot) return
+    try {
+      const all = getAllMd()
+      const sections = snapshot.manifest.sections
+        .filter((s) => s.file)
+        .map((s) => ({ id: s.id, role: s.role, doc: mdToDoc(all.get(s.id) ?? '') }))
+      setLabelIndex(buildLabelIndex(sections))
+    } catch {
+      /* 解析异常时保留旧索引 */
+    }
+  }, [snapshot, getAllMd])
+
+  useEffect(() => {
+    recomputeNumbering()
+  }, [recomputeNumbering])
+
+  useEffect(() => {
+    void api.references().then(setReferences).catch(() => undefined)
+  }, [])
+
+  const handleSectionChange = useCallback(
+    (id: string, md: string) => {
+      updateSection(id, md)
+      if (numberingTimer.current) clearTimeout(numberingTimer.current)
+      numberingTimer.current = setTimeout(recomputeNumbering, 400)
+    },
+    [updateSection, recomputeNumbering]
+  )
 
   // 首次加载后选中第一个可编辑章节
   useEffect(() => {
@@ -72,6 +109,16 @@ export function App() {
       }),
     [guard, snapshot, reload]
   )
+
+  const numbering = useMemo((): NumberingData | null => {
+    if (!labelIndex || !activeId) return null
+    return {
+      labelIndex,
+      sectionId: activeId,
+      refOrder: Object.fromEntries(references.references.map((r, i) => [r.key, i + 1])),
+      references: references.references,
+    }
+  }, [labelIndex, activeId, references])
 
   const globalSaveState = useMemo(() => {
     const states = Object.values(saveStates)
@@ -142,14 +189,13 @@ export function App() {
               sectionId={active.id}
               initialMd={getMd(active.id)}
               editable
-              onChangeMd={(md) => updateSection(active.id, md)}
+              numbering={numbering}
+              onChangeMd={(md) => handleSectionChange(active.id, md)}
             />
+          ) : active?.role === 'references' ? (
+            <ReferencesPanel references={references} onChanged={setReferences} />
           ) : (
-            <div className="empty-state">
-              {active?.role === 'references'
-                ? '参考文献由 references.json 自动生成（管理界面随 M4+ 到来）'
-                : '选择左侧章节开始编辑'}
-            </div>
+            <div className="empty-state">选择左侧章节开始编辑</div>
           )}
         </main>
         {panel && (

@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import type { Editor } from '@tiptap/core'
 import { useEditorState } from '@tiptap/react'
+import { RefPicker, TableSettings, Dropdown } from './InsertMenus.tsx'
 
 interface ToolbarProps {
   editor: Editor
+  onInsertMath: (kind: 'inline' | 'block') => void
+  onInsertImage: () => void
 }
 
 interface BtnProps {
@@ -28,7 +32,40 @@ function Btn({ label, title, active, disabled, onClick }: BtnProps) {
   )
 }
 
-export function Toolbar({ editor }: ToolbarProps) {
+/** 光标在标题内时的标号编辑 */
+function HeadingLabelMenu({ editor, onClose }: { editor: Editor; onClose: () => void }) {
+  const [label, setLabel] = useState(String(editor.getAttributes('heading').label ?? ''))
+  return (
+    <Dropdown onClose={onClose}>
+      <div className="dropdown-title">标题标号（供交叉引用）</div>
+      <div className="dropdown-form">
+        <label>
+          标号
+          <input
+            className="mono"
+            autoFocus
+            placeholder="sec:assumptions"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                editor.chain().focus().updateAttributes('heading', { label: label.trim() || null }).run()
+                onClose()
+              }
+            }}
+            onBlur={() => {
+              editor.chain().focus().updateAttributes('heading', { label: label.trim() || null }).run()
+            }}
+          />
+        </label>
+      </div>
+    </Dropdown>
+  )
+}
+
+export function Toolbar({ editor, onInsertMath, onInsertImage }: ToolbarProps) {
+  const [menu, setMenu] = useState<'refs' | 'table' | 'headingLabel' | null>(null)
+
   const s = useEditorState({
     editor,
     selector: ({ editor: e }) => ({
@@ -41,6 +78,8 @@ export function Toolbar({ editor }: ToolbarProps) {
       orderedList: e.isActive('orderedList'),
       blockquote: e.isActive('blockquote'),
       codeBlock: e.isActive('codeBlock'),
+      inTable: e.isActive('table'),
+      inHeading: e.isActive('heading'),
       heading: e.isActive('heading', { level: 1 })
         ? 1
         : e.isActive('heading', { level: 2 })
@@ -75,6 +114,9 @@ export function Toolbar({ editor }: ToolbarProps) {
         <option value={2}>标题 2（节）</option>
         <option value={3}>标题 3</option>
       </select>
+      {s.inHeading && (
+        <Btn label="#⃞" title="标题标号（交叉引用用）" onClick={() => setMenu(menu === 'headingLabel' ? null : 'headingLabel')} />
+      )}
       <span className="tb-sep" />
       <Btn label="B" title="加粗 (⌘B)" active={s.bold} onClick={() => chain().toggleBold().run()} />
       <Btn label="I" title="斜体 (⌘I)" active={s.italic} onClick={() => chain().toggleItalic().run()} />
@@ -86,6 +128,26 @@ export function Toolbar({ editor }: ToolbarProps) {
       <Btn label="1≡" title="有序列表" active={s.orderedList} onClick={() => chain().toggleOrderedList().run()} />
       <Btn label="❝" title="引用块" active={s.blockquote} onClick={() => chain().toggleBlockquote().run()} />
       <Btn label="⌨" title="代码块" active={s.codeBlock} onClick={() => chain().toggleCodeBlock().run()} />
+      <span className="tb-sep" />
+      <Btn label="ƒ" title="行内公式" onClick={() => onInsertMath('inline')} />
+      <Btn label="∑" title="块级公式" onClick={() => onInsertMath('block')} />
+      <Btn label="🖼" title="插入图片" onClick={onInsertImage} />
+      <Btn
+        label="⊞"
+        title="插入表格"
+        onClick={() => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+      />
+      <Btn label="＠" title="插入交叉引用 / 文献引用" onClick={() => setMenu(menu === 'refs' ? null : 'refs')} />
+      {s.inTable && (
+        <>
+          <span className="tb-sep" />
+          <Btn label="表⚙" title="表格设置" active={menu === 'table'} onClick={() => setMenu(menu === 'table' ? null : 'table')} />
+        </>
+      )}
+
+      {menu === 'refs' && <RefPicker editor={editor} onClose={() => setMenu(null)} />}
+      {menu === 'table' && <TableSettings editor={editor} onClose={() => setMenu(null)} />}
+      {menu === 'headingLabel' && <HeadingLabelMenu editor={editor} onClose={() => setMenu(null)} />}
     </div>
   )
 }
