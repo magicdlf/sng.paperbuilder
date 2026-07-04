@@ -1,0 +1,23 @@
+{
+  "name": "himcm-paper",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build -w @himcm/client",
+    "start": "npm run build && node scripts/dev.mjs --prod",
+    "test": "vitest run",
+    "typecheck": "tsc -p shared && tsc -p server && tsc -p client"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0"
+  }
+}

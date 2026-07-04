@@ -1,0 +1,243 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--text);
+  background: var(--bg);
+  font-size: 14px;
+}
+
+button {
+  font-family: inherit;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-loading,
+.app-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--text-dim);
+}
+
+/* ---- 顶栏 ---- */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 48px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.app-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.app-title .meta {
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.action-error {
+  color: var(--danger);
+  font-size: 12.5px;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.save-state {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.save-state.dirty {
+  color: var(--warn);
+}
+
+.save-state.saving {
+  color: var(--accent);
+}
+
+.save-state.error {
+  color: var(--danger);
+}
+
+/* ---- 主体 ---- */
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-dim);
+}
+
+/* ---- 章节列表 ---- */
+
+.section-list {
+  width: 232px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+
+.section-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+.section-add {
+  display: flex;
+  gap: 4px;
+  padding: 4px 10px;
+}
+
+.section-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.section-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.section-list li {
+  position: relative;
+}
+
+.section-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.section-list li.active .section-item {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.section-item:hover {
+  background: #f6f4f0;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warn);
+  flex-shrink: 0;
+}
+
+.dot.error {
+  background: var(--danger);
+}
+
+.badge {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+
+.section-actions {
+  display: flex;
+  gap: 2px;
+  padding: 0 10px 6px;
+}
+
+.icon-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-dim);
+  padding: 3px 6px;
+  border-radius: 5px;
+}
+
+.icon-btn:hover {
+  background: #eceae4;
+  color: var(--text);
+}
+
+.icon-btn.danger:hover {
+  color: var(--danger);
+}

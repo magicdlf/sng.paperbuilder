@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "references": [
+    {
+      "key": "example2024",
+      "authors": "A. Author and B. Author",
+      "title": "An example reference entry — delete me",
+      "container": "Journal of Examples",
+      "year": "2024",
+      "url": "https://example.com",
+      "accessed": "2026-07-01"
+    }
+  ]
+}

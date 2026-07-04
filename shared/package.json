@@ -1,0 +1,23 @@
+{
+  "name": "@himcm/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@tiptap/core": "3.27.1",
+    "@tiptap/extension-mathematics": "3.27.1",
+    "@tiptap/extension-table": "3.27.1",
+    "@tiptap/pm": "3.27.1",
+    "@tiptap/starter-kit": "3.27.1",
+    "katex": "^0.16.21",
+    "markdown-it": "^14.1.0",
+    "prosemirror-markdown": "^1.13.4"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.7",
+    "@types/markdown-it": "^14.1.2"
+  }
+}

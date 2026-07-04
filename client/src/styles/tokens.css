@@ -1,0 +1,21 @@
+:root {
+  --bg: #f2f0ec;
+  --panel: #ffffff;
+  --border: #e2ded6;
+  --text: #26221c;
+  --text-dim: #7a7468;
+  --accent: #7c5cff;
+  --accent-soft: #efeaff;
+  --danger: #c4442a;
+  --ok: #2e7d4f;
+  --warn: #b3730a;
+
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Segoe UI', 'Microsoft YaHei',
+    sans-serif;
+  --font-paper: 'STIX Two Text', 'Times New Roman', 'Songti SC', serif;
+  --font-mono: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(40, 33, 20, 0.08), 0 8px 32px rgba(40, 33, 20, 0.06);
+}

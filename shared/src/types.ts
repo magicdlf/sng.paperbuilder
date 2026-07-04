@@ -1,0 +1,160 @@
+// 全项目共享的数据契约：论文清单、批注、git、编译结果、编号索引。
+// server 与 client 的 API 均以此为准。
+
+export type SectionRole = 'summary' | 'body' | 'appendix' | 'references' | 'ai-report'
+
+export interface SectionMeta {
+  id: string
+  /** 相对论文目录的 md 文件路径；references 角色为 null（由 references.json 生成） */
+  file: string | null
+  role: SectionRole
+}
+
+export interface PaperExportConfig {
+  engine: 'pdflatex' | 'xelatex'
+  /** true 时批注导出为 todonotes 边注（草稿模式） */
+  draftComments: boolean
+  toc: boolean
+}
+
+export interface PaperManifest {
+  version: 1
+  contest: string
+  year: number
+  problem: string
+  teamControlNumber: string
+  sections: SectionMeta[]
+  bibliography: string
+  export: PaperExportConfig
+}
+
+export interface SectionContent {
+  id: string
+  role: SectionRole
+  file: string | null
+  md: string
+  /** 从 md 首个一级标题推导 */
+  title: string
+}
+
+export interface ProjectSnapshot {
+  paperDir: string
+  manifest: PaperManifest
+  sections: SectionContent[]
+}
+
+// ---- git ----
+
+export interface GitLogEntry {
+  hash: string
+  date: string
+  author: string
+  message: string
+}
+
+export interface GitStatusResult {
+  isRepo: boolean
+  changedFiles: string[]
+}
+
+export interface GitCommitResult {
+  committed: boolean
+  hash: string | null
+}
+
+// ---- 编译 ----
+
+export interface CompileError {
+  sectionId: string | null
+  line: number | null
+  message: string
+}
+
+export interface CompileResult {
+  ok: boolean
+  pdfAvailable: boolean
+  /** PDF 总页数（含 AI Use Report） */
+  pagesTotal: number | null
+  /** 计入 25 页限制的页数（不含 AI Use Report） */
+  pagesCounted: number | null
+  /** 页数来源是否可信（log/aux 与 pdfinfo 一致） */
+  pagesVerified: boolean
+  overLimit: boolean | null
+  errors: CompileError[]
+  warnings: string[]
+  durationMs: number
+}
+
+// ---- 批注 ----
+
+export interface CommentMessage {
+  id: string
+  at: string
+  text: string
+  author?: string
+}
+
+export interface CommentThread {
+  id: string
+  sectionId: string
+  status: 'open' | 'resolved'
+  createdAt: string
+  /** 锚定文本快照，用于孤儿恢复 */
+  anchorText: string
+  thread: CommentMessage[]
+}
+
+export interface CommentsFile {
+  version: 1
+  comments: CommentThread[]
+}
+
+// ---- 参考文献 ----
+
+export interface Reference {
+  key: string
+  authors?: string
+  title: string
+  /** 期刊/网站/出版方 */
+  container?: string
+  year?: string
+  url?: string
+  /** 访问日期（网页类引用） */
+  accessed?: string
+  note?: string
+}
+
+export interface ReferencesFile {
+  version: 1
+  references: Reference[]
+}
+
+// ---- 编号 ----
+
+export type LabelKind = 'fig' | 'tbl' | 'eq' | 'sec'
+
+export interface LabelEntry {
+  kind: LabelKind
+  label: string
+  /** 显示编号，如 "3"、"2.1"、"A" */
+  number: string
+  sectionId: string
+}
+
+/** 某章节开始前的计数器状态（用于编辑器内实时编号） */
+export interface SectionCounters {
+  fig: number
+  tbl: number
+  eq: number
+  /** 分级标题计数 [h1, h2, h3]；appendix 中 h1 计数代表字母序号 */
+  heading: [number, number, number]
+  /** 该章节是否处于附录（h1 编号用字母） */
+  appendix: boolean
+  /** 该章节标题是否参与编号（summary/ai-report 不编号） */
+  numbered: boolean
+}
+
+export interface LabelIndex {
+  byLabel: Record<string, LabelEntry>
+  sectionStart: Record<string, SectionCounters>
+}

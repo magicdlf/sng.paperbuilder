@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "contest": "HiMCM",
+  "year": 2026,
+  "problem": "A",
+  "teamControlNumber": "0000000",
+  "sections": [
+    { "id": "summary", "file": "sections/00-summary.md", "role": "summary" },
+    { "id": "introduction", "file": "sections/01-introduction.md", "role": "body" },
+    { "id": "assumptions", "file": "sections/02-assumptions.md", "role": "body" },
+    { "id": "notation", "file": "sections/03-notation.md", "role": "body" },
+    { "id": "model", "file": "sections/04-model.md", "role": "body" },
+    { "id": "results", "file": "sections/05-results.md", "role": "body" },
+    { "id": "sensitivity", "file": "sections/06-sensitivity.md", "role": "body" },
+    { "id": "strengths", "file": "sections/07-strengths.md", "role": "body" },
+    { "id": "conclusion", "file": "sections/08-conclusion.md", "role": "body" },
+    { "id": "appendix", "file": "sections/80-appendix.md", "role": "appendix" },
+    { "id": "references", "file": null, "role": "references" },
+    { "id": "ai-report", "file": "sections/90-ai-report.md", "role": "ai-report" }
+  ],
+  "bibliography": "references.json",
+  "export": {
+    "engine": "pdflatex",
+    "draftComments": false,
+    "toc": true
+  }
+}

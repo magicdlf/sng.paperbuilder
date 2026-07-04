@@ -1,0 +1,113 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ProjectSnapshot } from '@himcm/shared'
+import { api } from '../api.ts'
+
+export type SaveState = 'saved' | 'dirty' | 'saving' | 'error'
+
+const SAVE_DEBOUNCE_MS = 800
+
+export function useProject() {
+  const [snapshot, setSnapshot] = useState<ProjectSnapshot | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  /** 各章节最新 md（含未保存的本地编辑） */
+  const mdRef = useRef(new Map<string, string>())
+  const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({})
+  const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+
+  // saveStates 的 ref 镜像（回调中读取最新值）
+  const saveStatesRef = useRef(saveStates)
+  saveStatesRef.current = saveStates
+
+  const reload = useCallback(async () => {
+    try {
+      const snap = await api.project()
+      for (const s of snap.sections) {
+        // 不覆盖有未保存编辑的章节
+        const state = saveStatesRef.current[s.id]
+        if (state !== 'dirty' && state !== 'saving') mdRef.current.set(s.id, s.md)
+      }
+      setSnapshot(snap)
+      setLoadError(null)
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : String(err))
+    }
+  }, [])
+
+  useEffect(() => {
+    void reload()
+  }, [reload])
+
+  const setSaveState = useCallback((id: string, state: SaveState) => {
+    setSaveStates((prev) => (prev[id] === state ? prev : { ...prev, [id]: state }))
+  }, [])
+
+  const flushSection = useCallback(
+    async (id: string) => {
+      const timer = timersRef.current.get(id)
+      if (timer) {
+        clearTimeout(timer)
+        timersRef.current.delete(id)
+      }
+      const md = mdRef.current.get(id)
+      if (md === undefined) return
+      setSaveState(id, 'saving')
+      try {
+        const { section } = await api.saveSection(id, md)
+        // 若保存期间又有编辑则保持 dirty
+        if (mdRef.current.get(id) === md) {
+          setSaveState(id, 'saved')
+          setSnapshot((prev) =>
+            prev
+              ? { ...prev, sections: prev.sections.map((s) => (s.id === id ? { ...section, md: mdRef.current.get(id) ?? section.md } : s)) }
+              : prev
+          )
+        } else {
+          setSaveState(id, 'dirty')
+        }
+      } catch {
+        setSaveState(id, 'error')
+      }
+    },
+    [setSaveState]
+  )
+
+  /** 编辑器每次更新调用：记录本地 md 并安排防抖保存 */
+  const updateSection = useCallback(
+    (id: string, md: string) => {
+      if (mdRef.current.get(id) === md) return
+      mdRef.current.set(id, md)
+      setSaveState(id, 'dirty')
+      const prev = timersRef.current.get(id)
+      if (prev) clearTimeout(prev)
+      timersRef.current.set(
+        id,
+        setTimeout(() => void flushSection(id), SAVE_DEBOUNCE_MS)
+      )
+    },
+    [flushSection, setSaveState]
+  )
+
+  /** 关闭页面前尽力保存未落盘的章节 */
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      for (const [id, timer] of timersRef.current) {
+        clearTimeout(timer)
+        const md = mdRef.current.get(id)
+        if (md === undefined) continue
+        void fetch(`/api/sections/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ md }),
+          keepalive: true,
+        })
+      }
+      timersRef.current.clear()
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [])
+
+  const getMd = useCallback((id: string): string => mdRef.current.get(id) ?? '', [])
+
+  return { snapshot, loadError, reload, updateSection, flushSection, getMd, saveStates }
+}
