@@ -3,6 +3,7 @@ import path from 'node:path'
 import { Hono } from 'hono'
 import { HttpError, type ProjectStore } from './services/projectStore.ts'
 import type { GitService } from './services/gitService.ts'
+import type { LatexService } from './services/latexService.ts'
 import { apiRoutes } from './routes/api.ts'
 
 const MIME: Record<string, string> = {
@@ -35,6 +36,7 @@ async function serveFile(absPath: string, extraHeaders: Record<string, string> =
 export interface AppContext {
   store: ProjectStore
   git: GitService
+  latex: LatexService
   /** 生产模式下 client/dist 的路径；dev 模式为 null（由 vite 托管前端） */
   clientDist: string | null
 }

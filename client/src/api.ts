@@ -1,5 +1,6 @@
 import type {
   CommentsFile,
+  CompileResult,
   GitCommitResult,
   GitLogEntry,
   GitStatusResult,
@@ -71,4 +72,7 @@ export const api = {
   gitCommit: (message: string) => request<GitCommitResult>('/api/git/commit', jsonInit('POST', { message })),
   gitRestore: (rev: string, file: string) =>
     request<{ ok: true }>('/api/git/restore', jsonInit('POST', { rev, file })),
+
+  compile: () => request<CompileResult>('/api/export', jsonInit('POST', { compile: true })),
+  exportTex: () => request<{ texPath: string; warnings: string[] }>('/api/export', jsonInit('POST', { compile: false })),
 }

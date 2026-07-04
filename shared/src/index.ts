@@ -14,3 +14,12 @@ export {
 } from './extensions/index.ts'
 export { mdToDoc, docToMd, titleFromMd, createMarkdownIt, paperMarkdownSerializer } from './markdown/index.ts'
 export { buildLabelIndex, walkSectionCounters, crossRefDisplay, type SectionDoc } from './numbering.ts'
+export { docToLatex, type LatexOptions } from './latex/serialize.ts'
+export {
+  assemblePaper,
+  lintSections,
+  type AssembleInput,
+  type AssembleSection,
+  type AssembledLatex,
+} from './latex/template.ts'
+export { escapeLatex } from './latex/escape.ts'

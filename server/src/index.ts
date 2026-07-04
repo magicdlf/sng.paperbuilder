@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
 import { ProjectStore } from './services/projectStore.ts'
 import { GitService } from './services/gitService.ts'
+import { LatexService } from './services/latexService.ts'
 import { createApp } from './app.ts'
 
 function argValue(name: string, fallback: string): string {
@@ -42,7 +43,8 @@ async function main(): Promise<void> {
     }
   }
 
-  const app = createApp({ store, git, clientDist })
+  const latex = new LatexService(store)
+  const app = createApp({ store, git, latex, clientDist })
   serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {
     console.log(`HiMCM server 运行于 http://127.0.0.1:${info.port}`)
   })

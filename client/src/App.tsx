@@ -3,11 +3,15 @@ import { api } from './api.ts'
 import { useProject } from './hooks/useProject.ts'
 import { Editor } from './editor/Editor.tsx'
 import { SectionList } from './panels/SectionList.tsx'
+import { RightPanel, type PanelTab } from './panels/RightPanel.tsx'
+import { CompilePanel } from './panels/CompilePanel.tsx'
 
 export function App() {
-  const { snapshot, loadError, reload, updateSection, getMd, saveStates } = useProject()
+  const { snapshot, loadError, reload, updateSection, flushSection, getMd, saveStates } = useProject()
   const [activeId, setActiveId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [panel, setPanel] = useState<PanelTab | null>(null)
+  const [compileRequestId, setCompileRequestId] = useState(0)
 
   // 首次加载后选中第一个可编辑章节
   useEffect(() => {
@@ -105,6 +109,20 @@ export function App() {
         <div className="header-right">
           {actionError && <span className="action-error">{actionError}</span>}
           <span className={`save-state ${globalSaveState.cls}`}>{globalSaveState.text}</span>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={() => {
+              // 编译前把未保存的章节全部落盘
+              for (const s of snapshot.sections) {
+                if (saveStates[s.id] === 'dirty' || saveStates[s.id] === 'saving') void flushSection(s.id)
+              }
+              setPanel('compile')
+              setCompileRequestId((n) => n + 1)
+            }}
+          >
+            编译 PDF
+          </button>
         </div>
       </header>
       <div className="app-body">
@@ -134,6 +152,20 @@ export function App() {
             </div>
           )}
         </main>
+        {panel && (
+          <RightPanel tab={panel} onTabChange={setPanel} onClose={() => setPanel(null)}>
+            {panel === 'compile' && (
+              <CompilePanel
+                snapshot={snapshot}
+                compileRequestId={compileRequestId}
+                onManifestChanged={() => void reload()}
+                onJumpToSection={(id) => setActiveId(id)}
+              />
+            )}
+            {panel === 'history' && <div className="empty-state">git 历史（M5）</div>}
+            {panel === 'comments' && <div className="empty-state">批注（M6）</div>}
+          </RightPanel>
+        )}
       </div>
     </div>
   )

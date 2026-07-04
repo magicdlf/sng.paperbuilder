@@ -2,15 +2,17 @@ import { Hono } from 'hono'
 import type { CommentsFile, ReferencesFile } from '@himcm/shared'
 import { HttpError, type ProjectStore } from '../services/projectStore.ts'
 import type { GitService } from '../services/gitService.ts'
+import type { LatexService } from '../services/latexService.ts'
 
 export interface ApiContext {
   store: ProjectStore
   git: GitService
+  latex: LatexService
 }
 
 export function apiRoutes(ctx: ApiContext): Hono {
   const api = new Hono()
-  const { store, git } = ctx
+  const { store, git, latex } = ctx
 
   // ---- 项目 ----
 
@@ -114,9 +116,16 @@ export function apiRoutes(ctx: ApiContext): Hono {
     return c.json({ ok: true })
   })
 
-  // ---- 导出（M3 实现） ----
+  // ---- 导出与编译 ----
 
-  api.post('/export', (c) => c.json({ error: 'LaTeX 导出尚未实现（M3）' }, 501))
+  api.post('/export', async (c) => {
+    const body = await c.req.json<{ compile?: boolean }>().catch(() => ({ compile: false }))
+    if (body.compile) {
+      return c.json(await latex.compile())
+    }
+    const { texPath, warnings } = await latex.exportTex()
+    return c.json({ texPath, warnings })
+  })
 
   return api
 }
