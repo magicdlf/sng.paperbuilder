@@ -8,9 +8,11 @@ import { SectionList } from './panels/SectionList.tsx'
 import { RightPanel, type PanelTab } from './panels/RightPanel.tsx'
 import { CompilePanel } from './panels/CompilePanel.tsx'
 import { ReferencesPanel } from './panels/ReferencesPanel.tsx'
+import { HistoryPanel } from './panels/HistoryPanel.tsx'
 
 export function App() {
-  const { snapshot, loadError, reload, updateSection, flushSection, getMd, getAllMd, saveStates } = useProject()
+  const { snapshot, loadError, reload, updateSection, flushSection, discardPending, getMd, getAllMd, saveStates } =
+    useProject()
   const [activeId, setActiveId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [panel, setPanel] = useState<PanelTab | null>(null)
@@ -18,6 +20,8 @@ export function App() {
   const [labelIndex, setLabelIndex] = useState<LabelIndex | null>(null)
   const [references, setReferences] = useState<ReferencesFile>({ version: 1, references: [] })
   const numberingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** 从 git 恢复章节后 +1，强制编辑器以磁盘内容重建 */
+  const [restoreVersion, setRestoreVersion] = useState(0)
 
   // ---- 实时编号：从全部章节（含未保存编辑）重建 LabelIndex ----
   const recomputeNumbering = useCallback(() => {
@@ -185,7 +189,7 @@ export function App() {
         <main className="app-main">
           {active && active.file ? (
             <Editor
-              key={active.id}
+              key={`${active.id}:${restoreVersion}`}
               sectionId={active.id}
               initialMd={getMd(active.id)}
               editable
@@ -208,7 +212,20 @@ export function App() {
                 onJumpToSection={(id) => setActiveId(id)}
               />
             )}
-            {panel === 'history' && <div className="empty-state">git 历史（M5）</div>}
+            {panel === 'history' && (
+              <HistoryPanel
+                activeSection={
+                  active && active.file ? { id: active.id, file: active.file, title: active.title } : null
+                }
+                beforeRestore={discardPending}
+                onRestored={() => {
+                  void reload().then(() => {
+                    setRestoreVersion((n) => n + 1)
+                    recomputeNumbering()
+                  })
+                }}
+              />
+            )}
             {panel === 'comments' && <div className="empty-state">批注（M6）</div>}
           </RightPanel>
         )}

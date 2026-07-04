@@ -112,5 +112,18 @@ export function useProject() {
   /** 全部章节的最新 md（含未保存编辑），供实时编号计算 */
   const getAllMd = useCallback((): Map<string, string> => new Map(mdRef.current), [])
 
-  return { snapshot, loadError, reload, updateSection, flushSection, getMd, getAllMd, saveStates }
+  /** 丢弃某章节的待保存编辑（git 恢复版本前调用，防止 debounce 把旧内容写回） */
+  const discardPending = useCallback(
+    (id: string) => {
+      const timer = timersRef.current.get(id)
+      if (timer) {
+        clearTimeout(timer)
+        timersRef.current.delete(id)
+      }
+      setSaveState(id, 'saved')
+    },
+    [setSaveState]
+  )
+
+  return { snapshot, loadError, reload, updateSection, flushSection, discardPending, getMd, getAllMd, saveStates }
 }
