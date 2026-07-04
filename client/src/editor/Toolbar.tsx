@@ -7,6 +7,7 @@ interface ToolbarProps {
   editor: Editor
   onInsertMath: (kind: 'inline' | 'block') => void
   onInsertImage: () => void
+  onAddComment: (text: string) => void
 }
 
 interface BtnProps {
@@ -63,8 +64,40 @@ function HeadingLabelMenu({ editor, onClose }: { editor: Editor; onClose: () => 
   )
 }
 
-export function Toolbar({ editor, onInsertMath, onInsertImage }: ToolbarProps) {
-  const [menu, setMenu] = useState<'refs' | 'table' | 'headingLabel' | null>(null)
+/** 新建批注输入框 */
+function CommentDialog({ onSubmit, onClose }: { onSubmit: (text: string) => void; onClose: () => void }) {
+  const [text, setText] = useState('')
+  const submit = () => {
+    if (text.trim()) onSubmit(text.trim())
+    onClose()
+  }
+  return (
+    <Dropdown onClose={onClose}>
+      <div className="dropdown-title">新建批注</div>
+      <div className="dropdown-form">
+        <textarea
+          autoFocus
+          rows={3}
+          placeholder="批注内容…（⌘Enter 保存）"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit()
+            if (e.key === 'Escape') onClose()
+          }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn primary" onClick={submit}>
+            添加批注
+          </button>
+        </div>
+      </div>
+    </Dropdown>
+  )
+}
+
+export function Toolbar({ editor, onInsertMath, onInsertImage, onAddComment }: ToolbarProps) {
+  const [menu, setMenu] = useState<'refs' | 'table' | 'headingLabel' | 'comment' | null>(null)
 
   const s = useEditorState({
     editor,
@@ -80,6 +113,7 @@ export function Toolbar({ editor, onInsertMath, onInsertImage }: ToolbarProps) {
       codeBlock: e.isActive('codeBlock'),
       inTable: e.isActive('table'),
       inHeading: e.isActive('heading'),
+      hasSelection: !e.state.selection.empty,
       heading: e.isActive('heading', { level: 1 })
         ? 1
         : e.isActive('heading', { level: 2 })
@@ -138,6 +172,12 @@ export function Toolbar({ editor, onInsertMath, onInsertImage }: ToolbarProps) {
         onClick={() => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
       />
       <Btn label="＠" title="插入交叉引用 / 文献引用" onClick={() => setMenu(menu === 'refs' ? null : 'refs')} />
+      <Btn
+        label="💬"
+        title={s.hasSelection ? '为所选文本添加批注' : '先选中一段文本'}
+        disabled={!s.hasSelection}
+        onClick={() => setMenu(menu === 'comment' ? null : 'comment')}
+      />
       {s.inTable && (
         <>
           <span className="tb-sep" />
@@ -148,6 +188,7 @@ export function Toolbar({ editor, onInsertMath, onInsertImage }: ToolbarProps) {
       {menu === 'refs' && <RefPicker editor={editor} onClose={() => setMenu(null)} />}
       {menu === 'table' && <TableSettings editor={editor} onClose={() => setMenu(null)} />}
       {menu === 'headingLabel' && <HeadingLabelMenu editor={editor} onClose={() => setMenu(null)} />}
+      {menu === 'comment' && <CommentDialog onSubmit={onAddComment} onClose={() => setMenu(null)} />}
     </div>
   )
 }

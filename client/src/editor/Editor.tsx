@@ -3,10 +3,17 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import type { Editor as TiptapEditor } from '@tiptap/core'
 import { docToMd, mdToDoc } from '@himcm/shared'
 import { clientExtensions } from './clientExtensions.ts'
+import { newCommentId } from '../comments.ts'
 import { Toolbar } from './Toolbar.tsx'
 import { MathPopover, type MathEditState } from './MathPopover.tsx'
 import { NumberingContext, type NumberingData } from './NumberingContext.ts'
 import { api } from '../api.ts'
+
+export interface NewCommentInfo {
+  id: string
+  anchorText: string
+  text: string
+}
 
 interface EditorProps {
   /** 每个章节独立挂载（父组件用 key=sectionId 重建） */
@@ -15,9 +22,21 @@ interface EditorProps {
   editable: boolean
   numbering: NumberingData | null
   onChangeMd: (md: string) => void
+  onReady?: (editor: TiptapEditor) => void
+  onSelectionChange?: (hasSelection: boolean) => void
+  onCreateComment?: (info: NewCommentInfo) => void
 }
 
-export function Editor({ sectionId, initialMd, editable, numbering, onChangeMd }: EditorProps) {
+export function Editor({
+  sectionId,
+  initialMd,
+  editable,
+  numbering,
+  onChangeMd,
+  onReady,
+  onSelectionChange,
+  onCreateComment,
+}: EditorProps) {
   const initialContent = useMemo(() => mdToDoc(initialMd).toJSON(), [initialMd])
   const [mathEdit, setMathEdit] = useState<MathEditState | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -52,6 +71,12 @@ export function Editor({ sectionId, initialMd, editable, numbering, onChangeMd }
       editable,
       onUpdate: ({ editor }) => {
         onChangeMd(docToMd(editor.state.doc))
+      },
+      onCreate: ({ editor }) => {
+        onReady?.(editor)
+      },
+      onSelectionUpdate: ({ editor }) => {
+        onSelectionChange?.(!editor.state.selection.empty)
       },
       editorProps: {
         handlePaste: (_view, event) => {
@@ -124,6 +149,19 @@ export function Editor({ sectionId, initialMd, editable, numbering, onChangeMd }
     editor.commands.focus()
   }, [editor, mathEdit])
 
+  const addComment = useCallback(
+    (text: string) => {
+      if (!editor || !onCreateComment) return
+      const { from, to, empty } = editor.state.selection
+      if (empty) return
+      const id = newCommentId()
+      const anchorText = editor.state.doc.textBetween(from, to, ' ')
+      editor.chain().focus().setComment(id).run()
+      onCreateComment({ id, anchorText, text })
+    },
+    [editor, onCreateComment]
+  )
+
   if (!editor) return null
 
   return (
@@ -133,6 +171,7 @@ export function Editor({ sectionId, initialMd, editable, numbering, onChangeMd }
           editor={editor}
           onInsertMath={insertMath}
           onInsertImage={() => fileInputRef.current?.click()}
+          onAddComment={addComment}
         />
         <input
           ref={fileInputRef}

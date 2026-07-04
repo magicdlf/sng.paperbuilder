@@ -1,14 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { buildLabelIndex, mdToDoc, type LabelIndex, type ReferencesFile } from '@himcm/shared'
+import type { Editor as TiptapEditor } from '@tiptap/core'
+import {
+  buildLabelIndex,
+  mdToDoc,
+  type CommentsFile,
+  type LabelIndex,
+  type ReferencesFile,
+} from '@himcm/shared'
 import { api } from './api.ts'
 import { useProject } from './hooks/useProject.ts'
-import { Editor } from './editor/Editor.tsx'
+import { collectAnchors, removeCommentFromMd, type CommentAnchor } from './comments.ts'
+import { Editor, type NewCommentInfo } from './editor/Editor.tsx'
 import type { NumberingData } from './editor/NumberingContext.ts'
 import { SectionList } from './panels/SectionList.tsx'
 import { RightPanel, type PanelTab } from './panels/RightPanel.tsx'
 import { CompilePanel } from './panels/CompilePanel.tsx'
 import { ReferencesPanel } from './panels/ReferencesPanel.tsx'
 import { HistoryPanel } from './panels/HistoryPanel.tsx'
+import { CommentsPanel } from './panels/CommentsPanel.tsx'
 
 export function App() {
   const { snapshot, loadError, reload, updateSection, flushSection, discardPending, getMd, getAllMd, saveStates } =
@@ -22,8 +31,12 @@ export function App() {
   const numberingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   /** 从 git 恢复章节后 +1，强制编辑器以磁盘内容重建 */
   const [restoreVersion, setRestoreVersion] = useState(0)
+  const [comments, setComments] = useState<CommentsFile>({ version: 1, comments: [] })
+  const [anchors, setAnchors] = useState<Record<string, CommentAnchor>>({})
+  const [hasSelection, setHasSelection] = useState(false)
+  const editorRef = useRef<TiptapEditor | null>(null)
 
-  // ---- 实时编号：从全部章节（含未保存编辑）重建 LabelIndex ----
+  // ---- 实时编号 + 批注锚点：从全部章节（含未保存编辑）重建 ----
   const recomputeNumbering = useCallback(() => {
     if (!snapshot) return
     try {
@@ -32,6 +45,7 @@ export function App() {
         .filter((s) => s.file)
         .map((s) => ({ id: s.id, role: s.role, doc: mdToDoc(all.get(s.id) ?? '') }))
       setLabelIndex(buildLabelIndex(sections))
+      setAnchors(collectAnchors(sections))
     } catch {
       /* 解析异常时保留旧索引 */
     }
@@ -43,7 +57,98 @@ export function App() {
 
   useEffect(() => {
     void api.references().then(setReferences).catch(() => undefined)
+    void api.comments().then(setComments).catch(() => undefined)
   }, [])
+
+  // ---- 批注 CRUD（每次操作整文件落盘，简单可靠） ----
+  const persistComments = useCallback((next: CommentsFile) => {
+    setComments(next)
+    void api.saveComments(next).catch(() => undefined)
+  }, [])
+
+  const handleCreateComment = useCallback(
+    (info: NewCommentInfo) => {
+      if (!activeId) return
+      const now = new Date().toISOString()
+      persistComments({
+        version: 1,
+        comments: [
+          {
+            id: info.id,
+            sectionId: activeId,
+            status: 'open',
+            createdAt: now,
+            anchorText: info.anchorText,
+            thread: [{ id: `m_${Date.now().toString(36)}`, at: now, text: info.text }],
+          },
+          ...comments.comments,
+        ],
+      })
+      setPanel('comments')
+    },
+    [activeId, comments, persistComments]
+  )
+
+  const handleReply = useCallback(
+    (threadId: string, text: string) => {
+      persistComments({
+        version: 1,
+        comments: comments.comments.map((c) =>
+          c.id === threadId
+            ? { ...c, thread: [...c.thread, { id: `m_${Date.now().toString(36)}`, at: new Date().toISOString(), text }] }
+            : c
+        ),
+      })
+    },
+    [comments, persistComments]
+  )
+
+  const handleToggleResolve = useCallback(
+    (threadId: string) => {
+      persistComments({
+        version: 1,
+        comments: comments.comments.map((c) =>
+          c.id === threadId ? { ...c, status: c.status === 'open' ? 'resolved' : 'open' } : c
+        ),
+      })
+    },
+    [comments, persistComments]
+  )
+
+  const handleDeleteComment = useCallback(
+    (threadId: string) => {
+      const anchor = anchors[threadId]
+      // 同时移除文档中的高亮 mark：活动章节走编辑器命令，其余章节走 md 变换
+      if (anchor) {
+        if (anchor.sectionId === activeId && editorRef.current) {
+          editorRef.current.commands.unsetComment(threadId)
+        } else {
+          const md = getMd(anchor.sectionId)
+          const next = removeCommentFromMd(md, threadId)
+          if (next !== md) updateSection(anchor.sectionId, next)
+        }
+      }
+      persistComments({ version: 1, comments: comments.comments.filter((c) => c.id !== threadId) })
+      setTimeout(recomputeNumbering, 0)
+    },
+    [anchors, activeId, comments, getMd, updateSection, persistComments, recomputeNumbering]
+  )
+
+  const handleReattach = useCallback(
+    (threadId: string) => {
+      const editor = editorRef.current
+      if (!editor || editor.state.selection.empty || !activeId) return
+      const { from, to } = editor.state.selection
+      const anchorText = editor.state.doc.textBetween(from, to, ' ')
+      editor.chain().focus().setComment(threadId).run()
+      persistComments({
+        version: 1,
+        comments: comments.comments.map((c) => (c.id === threadId ? { ...c, sectionId: activeId, anchorText } : c)),
+      })
+      setTimeout(recomputeNumbering, 450)
+    },
+    [activeId, comments, persistComments, recomputeNumbering]
+  )
 
   const handleSectionChange = useCallback(
     (id: string, md: string) => {
@@ -162,6 +267,20 @@ export function App() {
           <span className={`save-state ${globalSaveState.cls}`}>{globalSaveState.text}</span>
           <button
             type="button"
+            className="btn"
+            onClick={() => setPanel(panel === 'history' ? null : 'history')}
+          >
+            历史
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setPanel(panel === 'comments' ? null : 'comments')}
+          >
+            批注{comments.comments.filter((c) => c.status === 'open').length > 0 && ` (${comments.comments.filter((c) => c.status === 'open').length})`}
+          </button>
+          <button
+            type="button"
             className="btn primary"
             onClick={() => {
               // 编译前把未保存的章节全部落盘
@@ -195,6 +314,12 @@ export function App() {
               editable
               numbering={numbering}
               onChangeMd={(md) => handleSectionChange(active.id, md)}
+              onReady={(editor) => {
+                editorRef.current = editor
+                setHasSelection(false)
+              }}
+              onSelectionChange={setHasSelection}
+              onCreateComment={handleCreateComment}
             />
           ) : active?.role === 'references' ? (
             <ReferencesPanel references={references} onChanged={setReferences} />
@@ -226,7 +351,19 @@ export function App() {
                 }}
               />
             )}
-            {panel === 'comments' && <div className="empty-state">批注（M6）</div>}
+            {panel === 'comments' && (
+              <CommentsPanel
+                comments={comments}
+                anchors={anchors}
+                hasSelection={hasSelection}
+                sectionTitle={(id) => snapshot.sections.find((s) => s.id === id)?.title ?? id}
+                onJump={setActiveId}
+                onReply={handleReply}
+                onToggleResolve={handleToggleResolve}
+                onDelete={handleDeleteComment}
+                onReattach={handleReattach}
+              />
+            )}
           </RightPanel>
         )}
       </div>
