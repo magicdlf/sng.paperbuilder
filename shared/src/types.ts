@@ -79,6 +79,10 @@ export interface GitLogEntry {
   date: string
   author: string
   message: string
+  /** 父提交哈希（合并提交有多个）；图谱布局用 */
+  parents: string[]
+  /** 引用装饰，如 "HEAD -> main, tag: v1"；空串表示无 */
+  refs: string
 }
 
 export interface GitStatusResult {

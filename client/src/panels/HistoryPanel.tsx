@@ -1,7 +1,39 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { GitLogEntry, GitStatusResult } from '@himcm/shared'
 import { api } from '../api.ts'
 import { DiffView } from './DiffView.tsx'
+import { classifyCommit, layoutGraph, restoreTargetOf, type GraphRow } from './gitGraph.ts'
+
+const LANE_W = 14
+const KIND_COLOR: Record<string, string> = {
+  review: '#b3730a',
+  restore: '#4a6b96',
+  init: '#8f8878',
+  normal: '#a99ee0',
+}
+
+/** 单行轨道格：上下半区连线 + 圆点（viewBox 高 100，随行高拉伸） */
+function GraphCell({ row, kind }: { row: GraphRow; kind: string }) {
+  const width = row.laneCount * LANE_W + 4
+  const x = (lane: number) => lane * LANE_W + LANE_W / 2 + 2
+  return (
+    <svg
+      className="graph-cell"
+      width={width}
+      viewBox={`0 0 ${width} 100`}
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      {row.top.map((e, i) => (
+        <line key={`t${i}`} x1={x(e.from)} y1={0} x2={x(e.to)} y2={50} />
+      ))}
+      {row.bottom.map((e, i) => (
+        <line key={`b${i}`} x1={x(e.from)} y1={50} x2={x(e.to)} y2={100} />
+      ))}
+      <circle cx={x(row.dotLane)} cy={50} r={4.5} fill={KIND_COLOR[kind] ?? KIND_COLOR.normal} />
+    </svg>
+  )
+}
 
 /** git 空树哈希：根提交没有父提交时与之对比 */
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -40,6 +72,17 @@ export function HistoryPanel({
   const [error, setError] = useState<string | null>(null)
 
   const file = scope === 'section' && activeSection ? activeSection.file : undefined
+  // 轨道图只在全项目视图有意义（按文件过滤后父子关系断裂）
+  const graphRows = useMemo(() => (scope === 'project' ? layoutGraph(entries) : null), [scope, entries])
+
+  const jumpToCommit = (shortHash: string) => {
+    const target = entries.find((e) => e.hash.startsWith(shortHash))
+    if (!target) return
+    const el = document.getElementById(`commit-${target.hash}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el?.classList.add('flash')
+    setTimeout(() => el?.classList.remove('flash'), 1200)
+  }
 
   const refresh = useCallback(async () => {
     try {
@@ -169,12 +212,29 @@ export function HistoryPanel({
         </button>
       </div>
 
+      {graphRows && entries.length > 0 && (
+        <div className="graph-legend dim">
+          <span>
+            <i style={{ background: KIND_COLOR.review }} /> 送审
+          </span>
+          <span>
+            <i style={{ background: KIND_COLOR.restore }} /> 还原
+          </span>
+          <span>
+            <i style={{ background: KIND_COLOR.normal }} /> 提交
+          </span>
+        </div>
+      )}
       <ul className="commit-list">
-        {entries.map((entry) => {
+        {entries.map((entry, index) => {
           const isBrowsing = browsingHash === entry.hash
+          const kind = classifyCommit(entry.message)
+          const restoreTarget = kind === 'restore' ? restoreTargetOf(entry.message) : null
+          const isHead = entry.refs.includes('HEAD')
           return (
-            <li key={entry.hash} className={isBrowsing ? 'browsing' : ''}>
+            <li key={entry.hash} id={`commit-${entry.hash}`} className={isBrowsing ? 'browsing' : ''}>
               <div className="commit-row">
+                {graphRows && graphRows[index] && <GraphCell row={graphRows[index]!} kind={kind} />}
                 <button
                   type="button"
                   className="commit-main"
@@ -184,10 +244,27 @@ export function HistoryPanel({
                   <span className="commit-msg">
                     {isBrowsing && '👁 '}
                     {entry.message}
+                    {isHead && !isBrowsing && <span className="head-tag">最新</span>}
                   </span>
                   <span className="commit-meta">
                     <code>{entry.hash.slice(0, 7)}</code> · {entry.author} ·{' '}
                     {new Date(entry.date).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {restoreTarget && (
+                      <>
+                        {' · '}
+                        <button
+                          type="button"
+                          className="link-btn"
+                          title="跳到还原来源提交"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            jumpToCommit(restoreTarget)
+                          }}
+                        >
+                          ↩ {restoreTarget.slice(0, 7)}
+                        </button>
+                      </>
+                    )}
                   </span>
                 </button>
                 <button

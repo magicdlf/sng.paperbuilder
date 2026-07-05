@@ -144,7 +144,16 @@ export class GitService {
 
   async log(file?: string, limit = 200): Promise<GitLogEntry[]> {
     if (!(await this.isRepo())) return []
-    const args = ['log', `-n${limit}`, `--pretty=format:%H${SEP}%aI${SEP}%an${SEP}%s`]
+    // --branches --tags（而非 --all）：排除 refs/stash，浏览暂存不入图谱
+    const args = [
+      'log',
+      '--branches',
+      '--tags',
+      'HEAD',
+      '--topo-order',
+      `-n${limit}`,
+      `--pretty=format:%H${SEP}%P${SEP}%aI${SEP}%an${SEP}%D${SEP}%s`,
+    ]
     if (file) args.push('--', file)
     let out = ''
     try {
@@ -156,8 +165,8 @@ export class GitService {
       .split('\n')
       .filter(Boolean)
       .map((line) => {
-        const [hash = '', date = '', author = '', message = ''] = line.split(SEP)
-        return { hash, date, author, message }
+        const [hash = '', parents = '', date = '', author = '', refs = '', message = ''] = line.split(SEP)
+        return { hash, date, author, message, parents: parents.split(' ').filter(Boolean), refs }
       })
   }
 
