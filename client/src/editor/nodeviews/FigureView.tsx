@@ -1,13 +1,22 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { moveNodeAt } from '../moveBlock.ts'
 import { api } from '../../api.ts'
 
 /** 图节点视图：图片 + 选中时的工具集（移动/替换/删除 + 宽度/标号）+ 可编辑题注 */
 export function FigureView({ node, selected, editor, getPos, updateAttributes, deleteNode }: NodeViewProps) {
-  const width = (node.attrs.width as number | null) ?? 70
+  const attrWidth = (node.attrs.width as number | null) ?? 70
+  // 拖动滑块期间只改本地值（图片实时预览），松手才提交事务——
+  // 否则每格一个事务会重建 NodeView，拖拽断裂且 undo 被灌满
+  const [dragWidth, setDragWidth] = useState<number | null>(null)
+  const width = dragWidth ?? attrWidth
   const label = (node.attrs.label as string | null) ?? ''
   const replaceInputRef = useRef<HTMLInputElement>(null)
+
+  const commitWidth = () => {
+    if (dragWidth !== null && dragWidth !== attrWidth) updateAttributes({ width: dragWidth })
+    setDragWidth(null)
+  }
 
   const move = (dir: -1 | 1) => {
     const pos = getPos()
@@ -38,6 +47,11 @@ export function FigureView({ node, selected, editor, getPos, updateAttributes, d
         style={{ width: `${width}%` }}
         draggable={false}
         data-drag-handle=""
+        onMouseDown={(e) => {
+          // 抢在 PM 把光标放进题注之前选中整个节点
+          e.preventDefault()
+          selectSelf()
+        }}
         onClick={selectSelf}
       />
       {!selected && (
@@ -80,7 +94,10 @@ export function FigureView({ node, selected, editor, getPos, updateAttributes, d
                 max={100}
                 step={5}
                 value={width}
-                onChange={(e) => updateAttributes({ width: Number(e.target.value) })}
+                onChange={(e) => setDragWidth(Number(e.target.value))}
+                onPointerUp={commitWidth}
+                onKeyUp={commitWidth}
+                onBlur={commitWidth}
               />
               <span className="mono">{width}%</span>
             </label>

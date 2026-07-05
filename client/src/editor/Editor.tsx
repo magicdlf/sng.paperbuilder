@@ -56,9 +56,27 @@ export function Editor({
     if (!editor) return
     try {
       const { path } = await api.uploadAsset(file)
-      const node = { type: 'figure', attrs: { src: `/${path}`, width: null, label: null }, content: [] }
-      if (pos !== undefined) editor.chain().focus().insertContentAt(pos, node).run()
-      else editor.chain().focus().insertContent(node).run()
+      const src = `/${path}`
+      const node = { type: 'figure', attrs: { src, width: null, label: null }, content: [] }
+      const insertAt = pos ?? editor.state.selection.from
+      editor.chain().focus().insertContentAt(insertAt, node).run()
+      // 选中刚插入的图（工具集直接弹出），并滚动到可见——大截图的工具集可能在视口外
+      let figurePos: number | null = null
+      let bestDist = Infinity
+      editor.state.doc.descendants((n, p) => {
+        if (n.type.name === 'figure' && n.attrs.src === src) {
+          const dist = Math.abs(p - insertAt)
+          if (dist < bestDist) {
+            bestDist = dist
+            figurePos = p
+          }
+          return false
+        }
+        return true
+      })
+      if (figurePos !== null) {
+        editor.chain().setNodeSelection(figurePos).scrollIntoView().run()
+      }
     } catch (err) {
       window.alert(`图片上传失败：${err instanceof Error ? err.message : String(err)}`)
     }
