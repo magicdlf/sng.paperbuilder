@@ -8,6 +8,8 @@ interface ToolbarProps {
   onInsertMath: (kind: 'inline' | 'block') => void
   onInsertImage: () => void
   onAddComment: (text: string) => void
+  tableStyle: 'paper' | 'grid'
+  onToggleTableStyle: () => void
 }
 
 interface BtnProps {
@@ -96,7 +98,14 @@ function CommentDialog({ onSubmit, onClose }: { onSubmit: (text: string) => void
   )
 }
 
-export function Toolbar({ editor, onInsertMath, onInsertImage, onAddComment }: ToolbarProps) {
+export function Toolbar({
+  editor,
+  onInsertMath,
+  onInsertImage,
+  onAddComment,
+  tableStyle,
+  onToggleTableStyle,
+}: ToolbarProps) {
   const [menu, setMenu] = useState<'refs' | 'table' | 'headingLabel' | 'comment' | null>(null)
 
   const s = useEditorState({
@@ -182,6 +191,15 @@ export function Toolbar({ editor, onInsertMath, onInsertImage, onAddComment }: T
         <>
           <span className="tb-sep" />
           <Btn label="表⚙" title="表格设置（题注/标号/对齐/行列）" active={menu === 'table'} onClick={() => setMenu(menu === 'table' ? null : 'table')} />
+          <Btn
+            label={tableStyle === 'paper' ? '三线' : '网格'}
+            title={
+              tableStyle === 'paper'
+                ? '当前：三线表样式（同 PDF 输出）。点击切换为网格样式（编辑时看清单元格）'
+                : '当前：网格样式（编辑用）。点击切换为三线表样式（同 PDF 输出）'
+            }
+            onClick={onToggleTableStyle}
+          />
         </>
       )}
 

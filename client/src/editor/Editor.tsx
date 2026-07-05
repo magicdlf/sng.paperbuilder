@@ -27,6 +27,10 @@ interface EditorProps {
   onCreateComment?: (info: NewCommentInfo) => void
 }
 
+export type TableStyle = 'paper' | 'grid'
+
+const TABLE_STYLE_KEY = 'himcm.tableStyle'
+
 export function Editor({
   sectionId,
   initialMd,
@@ -39,6 +43,16 @@ export function Editor({
 }: EditorProps) {
   const initialContent = useMemo(() => mdToDoc(initialMd).toJSON(), [initialMd])
   const [mathEdit, setMathEdit] = useState<MathEditState | null>(null)
+  const [tableStyle, setTableStyle] = useState<TableStyle>(
+    () => (localStorage.getItem(TABLE_STYLE_KEY) as TableStyle | null) ?? 'paper'
+  )
+  const toggleTableStyle = useCallback(() => {
+    setTableStyle((prev) => {
+      const next = prev === 'paper' ? 'grid' : 'paper'
+      localStorage.setItem(TABLE_STYLE_KEY, next)
+      return next
+    })
+  }, [])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const editorRef = useRef<TiptapEditor | null>(null)
 
@@ -184,12 +198,14 @@ export function Editor({
 
   return (
     <NumberingContext.Provider value={numbering}>
-      <div className="editor-wrap">
+      <div className={`editor-wrap table-style-${tableStyle}`}>
         <Toolbar
           editor={editor}
           onInsertMath={insertMath}
           onInsertImage={() => fileInputRef.current?.click()}
           onAddComment={addComment}
+          tableStyle={tableStyle}
+          onToggleTableStyle={toggleTableStyle}
         />
         <input
           ref={fileInputRef}

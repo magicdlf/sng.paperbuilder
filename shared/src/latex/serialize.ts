@@ -148,8 +148,6 @@ function renderTable(node: PMNode, opts: LatexCtx): string {
   const lines = [
     `\\begin{table}[${opts.floatPlacement ?? 'htbp'}]`,
     '\\centering',
-    // 三线表：题注在表上方
-    `\\caption{${caption}}${label}`,
     useTabularx ? `\\begin{tabularx}{\\textwidth}{${colSpec}}` : `\\begin{tabular}{${colSpec}}`,
     '\\toprule',
     line(headerRow),
@@ -157,6 +155,8 @@ function renderTable(node: PMNode, opts: LatexCtx): string {
     ...(rows.length ? rows.map(line) : ['\\multicolumn{' + colCount + '}{c}{}\\\\']),
     '\\bottomrule',
     useTabularx ? '\\end{tabularx}' : '\\end{tabular}',
+    // 题注在表下方（与编辑器显示一致）
+    `\\caption{${caption}}${label}`,
     '\\end{table}',
   ]
   return lines.join('\n')

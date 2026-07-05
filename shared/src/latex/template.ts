@@ -57,6 +57,7 @@ ${useFloat}${draftComments ? '\\usepackage[colorinlistoftodos,textsize=footnotes
 \\setlength{\\headheight}{15pt}
 
 \\captionsetup{font=small,labelfont=bf}
+\\captionsetup[table]{position=below,skip=8pt}
 \\renewcommand{\\arraystretch}{1.15}
 \\lstset{basicstyle=\\ttfamily\\small,breaklines=true,breakatwhitespace=true,columns=fullflexible,keepspaces=true}
 `

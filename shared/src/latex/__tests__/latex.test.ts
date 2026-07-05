@@ -59,7 +59,6 @@ describe('docToLatex 构件映射', () => {
       [
         '\\begin{table}[htbp]',
         '\\centering',
-        '\\caption{Params}\\label{tbl:p}',
         '\\begin{tabular}{cr}',
         '\\toprule',
         'Sym & Val \\\\',
@@ -67,6 +66,7 @@ describe('docToLatex 构件映射', () => {
         '$\\beta$ & 0.3 \\\\',
         '\\bottomrule',
         '\\end{tabular}',
+        '\\caption{Params}\\label{tbl:p}',
         '\\end{table}',
       ].join('\n')
     )

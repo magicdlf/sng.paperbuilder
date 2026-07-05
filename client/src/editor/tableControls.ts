@@ -41,6 +41,25 @@ function buildDecorations(editor: Editor, doc: PMNode): DecorationSet {
   doc.descendants((node, pos) => {
     if (node.type.name !== 'table') return true
     decos.push(Decoration.widget(pos, () => buildWidget(editor, pos), { side: -1 }))
+
+    // 列对齐所见即所得：把 table.attrs.aligns 实时应用到各单元格
+    const aligns = (node.attrs.aligns ?? null) as Array<'left' | 'center' | 'right'> | null
+    if (aligns) {
+      let rowPos = pos + 1
+      node.forEach((row) => {
+        let cellPos = rowPos + 1
+        let col = 0
+        row.forEach((cell) => {
+          const align = aligns[col]
+          if (align && align !== 'left') {
+            decos.push(Decoration.node(cellPos, cellPos + cell.nodeSize, { style: `text-align:${align}` }))
+          }
+          cellPos += cell.nodeSize
+          col++
+        })
+        rowPos += row.nodeSize
+      })
+    }
     return false
   })
   return DecorationSet.create(doc, decos)

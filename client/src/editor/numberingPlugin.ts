@@ -49,6 +49,7 @@ function buildDecorations(doc: PMNode, counters: SectionCounters | null): Decora
         tbl++
         const caption = String(node.attrs.caption ?? '')
         const label = node.attrs.label ? `  {#${node.attrs.label}}` : ''
+        // 题注在表下方（用户偏好，与 PDF 输出一致）
         decos.push(
           Decoration.widget(pos + node.nodeSize, () =>
             widget('table-caption-line', `Table ${tbl}: ${caption || '（点击工具栏「表格设置」添加题注）'}${label}`)

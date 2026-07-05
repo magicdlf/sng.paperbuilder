@@ -158,7 +158,7 @@
   color: var(--accent);
 }
 
-/* ---- 表格 ---- */
+/* ---- 表格（公共） ---- */
 
 .tiptap table {
   border-collapse: collapse;
@@ -168,21 +168,51 @@
 
 .tiptap th,
 .tiptap td {
-  border: 1px solid #cfc9bd;
   padding: 5px 12px;
   position: relative;
   vertical-align: top;
+  min-width: 3em;
 }
 
 .tiptap th {
-  border-bottom: 2px solid #8f8878;
-  background: #faf8f4;
   font-weight: 600;
 }
 
 .tiptap th p,
 .tiptap td p {
   margin: 0;
+}
+
+/* ---- 网格样式（编辑用）---- */
+
+.table-style-grid .tiptap th,
+.table-style-grid .tiptap td {
+  border: 1px solid #cfc9bd;
+}
+
+.table-style-grid .tiptap th {
+  border-bottom: 2px solid #8f8878;
+  background: #faf8f4;
+}
+
+/* ---- 三线表样式（默认，同 PDF 输出）---- */
+
+.table-style-paper .tiptap table {
+  border-top: 2px solid #26221c;
+  border-bottom: 2px solid #26221c;
+}
+
+.table-style-paper .tiptap th {
+  border-bottom: 1.2px solid #26221c;
+}
+
+/* 极淡的行参考线，保证可编辑性；打印观感仍是三线 */
+.table-style-paper .tiptap td {
+  border-bottom: 1px solid #f2efe8;
+}
+
+.table-style-paper .tiptap tr:last-child td {
+  border-bottom: none;
 }
 
 .tiptap .selectedCell::after {
