@@ -4,6 +4,8 @@ import type { GitCommitResult, GitLogEntry, GitStatusResult } from '@himcm/share
 
 const execFileAsync = promisify(execFile)
 const SEP = '\x1f'
+/** 浏览历史版本前自动暂存未提交更改的标记 */
+const BROWSE_STASH = 'himcm-browse-autostash'
 
 /** 对论文目录的 git 操作。全部经 execFile 直调（无 shell，参数即字面量）。 */
 export class GitService {
@@ -47,7 +49,7 @@ export class GitService {
 
   async status(): Promise<GitStatusResult> {
     if (!(await this.isRepo())) {
-      return { isRepo: false, changedFiles: [], detached: false, headHash: null, branch: null }
+      return { isRepo: false, changedFiles: [], detached: false, headHash: null, branch: null, browseStashed: false }
     }
     const out = await this.git(['status', '--porcelain'])
     const changedFiles = out
@@ -67,17 +69,40 @@ export class GitService {
     } catch {
       headHash = null // 空仓库
     }
-    return { isRepo: true, changedFiles, detached: branch === null && headHash !== null, headHash, branch }
+    let browseStashed = false
+    try {
+      const stashes = await this.git(['stash', 'list', '--format=%gs'])
+      browseStashed = stashes.split('\n')[0]?.includes(BROWSE_STASH) ?? false
+    } catch {
+      /* 无 stash */
+    }
+    return {
+      isRepo: true,
+      changedFiles,
+      detached: branch === null && headHash !== null,
+      headHash,
+      branch,
+      browseStashed,
+    }
   }
 
-  /** 浏览历史版本（detached HEAD）。要求工作区干净，否则拒绝。 */
-  async checkout(rev: string): Promise<void> {
+  /**
+   * 浏览历史版本（detached HEAD）。
+   * 未提交的更改（批注、草稿等）自动暂存，回到最新时自动恢复——
+   * 浏览期间界面只读且 server 拒绝写入，保证恢复时永不冲突。
+   */
+  async checkout(rev: string): Promise<{ stashed: boolean }> {
     const st = await this.status()
-    if (st.changedFiles.length > 0) throw new Error('有未提交的更改，请先提交后再切换版本')
+    let stashed = false
+    if (st.changedFiles.length > 0) {
+      await this.git(['stash', 'push', '--include-untracked', '-m', BROWSE_STASH])
+      stashed = true
+    }
     await this.git(['checkout', rev])
+    return { stashed }
   }
 
-  /** 回到最新（唯一分支的顶端） */
+  /** 回到最新（唯一分支的顶端），并恢复浏览前暂存的未提交更改 */
   async checkoutLatest(): Promise<void> {
     const branches = (await this.git(['branch', '--format=%(refname:short)']))
       .split('\n')
@@ -86,6 +111,14 @@ export class GitService {
     const branch = branches.includes('main') ? 'main' : branches.includes('master') ? 'master' : branches[0]
     if (!branch) throw new Error('仓库没有分支')
     await this.git(['checkout', branch])
+    try {
+      const stashes = await this.git(['stash', 'list', '--format=%gs'])
+      if (stashes.split('\n')[0]?.includes(BROWSE_STASH)) {
+        await this.git(['stash', 'pop'])
+      }
+    } catch {
+      /* 无 stash 可恢复 */
+    }
   }
 
   /**

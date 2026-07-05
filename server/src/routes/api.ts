@@ -12,6 +12,12 @@ export function apiRoutes(ctx: ApiContext): Hono {
   // 当前论文可被切换，必须每次请求时取，不可解构缓存
   const cur = () => ctx.manager.current
 
+  /** 浏览历史版本（detached）期间拒绝一切写入，防止污染检出的工作区 */
+  const assertWritable = async () => {
+    const st = await cur().git.status()
+    if (st.detached) throw new HttpError(423, '正在浏览历史版本（只读），「回到最新」后再修改')
+  }
+
   // ---- 论文管理 ----
 
   api.get('/papers', async (c) =>
@@ -36,6 +42,7 @@ export function apiRoutes(ctx: ApiContext): Hono {
   api.get('/project', async (c) => c.json(await cur().store.snapshot()))
 
   api.patch('/project', async (c) => {
+    await assertWritable()
     const patch = await c.req.json()
     const manifest = await cur().store.updateProject(patch)
     return c.json({ manifest })
@@ -44,6 +51,7 @@ export function apiRoutes(ctx: ApiContext): Hono {
   // ---- 章节 ----
 
   api.post('/sections', async (c) => {
+    await assertWritable()
     const body = await c.req.json<{ title?: string; afterId?: string }>()
     const title = (body.title ?? '').trim()
     if (!title) throw new HttpError(400, '标题不能为空')
@@ -52,6 +60,7 @@ export function apiRoutes(ctx: ApiContext): Hono {
   })
 
   api.put('/sections/:id', async (c) => {
+    await assertWritable()
     const body = await c.req.json<{ md?: string; baseHash?: string; force?: boolean }>()
     if (typeof body.md !== 'string') throw new HttpError(400, '缺少 md 字段')
     const section = await cur().store.writeSection(c.req.param('id'), body.md, body.baseHash, body.force)
@@ -59,12 +68,14 @@ export function apiRoutes(ctx: ApiContext): Hono {
   })
 
   api.patch('/sections/:id/meta', async (c) => {
+    await assertWritable()
     const body = await c.req.json<{ owner?: string | null; status?: 'draft' | 'review' | 'done' }>()
     const meta = await cur().store.updateSectionMeta(c.req.param('id'), body)
     return c.json({ meta })
   })
 
   api.delete('/sections/:id', async (c) => {
+    await assertWritable()
     const manifest = await cur().store.deleteSection(c.req.param('id'))
     return c.json({ manifest })
   })
@@ -72,6 +83,7 @@ export function apiRoutes(ctx: ApiContext): Hono {
   // ---- 资源 ----
 
   api.post('/assets', async (c) => {
+    await assertWritable()
     const form = await c.req.formData()
     const file = form.get('file')
     if (!(file instanceof File)) throw new HttpError(400, '缺少文件字段 file')
@@ -85,6 +97,7 @@ export function apiRoutes(ctx: ApiContext): Hono {
 
   api.get('/comments', async (c) => c.json(await cur().store.loadComments()))
   api.put('/comments', async (c) => {
+    await assertWritable()
     const body = await c.req.json<CommentsFile>()
     await cur().store.saveComments(body)
     return c.json({ ok: true })
@@ -92,6 +105,7 @@ export function apiRoutes(ctx: ApiContext): Hono {
 
   api.get('/references', async (c) => c.json(await cur().store.loadReferences()))
   api.put('/references', async (c) => {
+    await assertWritable()
     const body = await c.req.json<ReferencesFile>()
     await cur().store.saveReferences(body)
     return c.json({ ok: true })
@@ -123,6 +137,7 @@ export function apiRoutes(ctx: ApiContext): Hono {
   })
 
   api.post('/git/commit', async (c) => {
+    await assertWritable()
     const body = await c.req.json<{ message?: string }>()
     const message = (body.message ?? '').trim()
     if (!message) throw new HttpError(400, '提交说明不能为空')
@@ -130,6 +145,7 @@ export function apiRoutes(ctx: ApiContext): Hono {
   })
 
   api.post('/git/restore', async (c) => {
+    await assertWritable()
     const body = await c.req.json<{ rev?: string; file?: string }>()
     if (!body.rev || !body.file) throw new HttpError(400, '需要 rev 与 file')
     await cur().git.restoreFile(body.rev, body.file)

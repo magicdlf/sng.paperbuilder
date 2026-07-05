@@ -88,6 +88,8 @@ export interface GitStatusResult {
   detached: boolean
   headHash: string | null
   branch: string | null
+  /** true = 浏览前有未提交更改被自动暂存，回到最新时自动恢复 */
+  browseStashed: boolean
 }
 
 export interface GitCommitResult {

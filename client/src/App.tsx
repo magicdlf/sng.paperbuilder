@@ -319,11 +319,11 @@ export function App() {
   const snapshotRef = useRef(snapshot)
   snapshotRef.current = snapshot
 
-  /** 浏览指定历史版本（detached，全局只读） */
+  /** 浏览指定历史版本（detached，全局只读）；未提交更改自动暂存、回来自动恢复 */
   const handleBrowseCommit = useCallback(
     (rev: string) =>
       guard(async () => {
-        // 有未保存内容先落盘；有未提交更改 server 会拒绝并提示
+        // 未保存内容先落盘（进入 stash 一起被暂存/恢复）
         for (const s of snapshotRef.current?.sections ?? []) {
           const st = saveStates[s.id]
           if (st === 'dirty' || st === 'saving') await flushSection(s.id)
@@ -354,7 +354,8 @@ export function App() {
       guard(async () => {
         const rev = gitInfo?.headHash
         if (!rev) return
-        if (!window.confirm(`把整个项目还原到 ${rev.slice(0, 7)} 并作为新提交？（历史不丢，可再切回）`)) return
+        const stashWarn = gitInfo?.browseStashed ? '\n注意：浏览前暂存的未提交修改中，与此版本重叠的文件将被覆盖。' : ''
+        if (!window.confirm(`把整个项目还原到 ${rev.slice(0, 7)} 并作为新提交？（历史不丢，可再切回）${stashWarn}`)) return
         const msg = `还原项目至 ${rev.slice(0, 7)}`
         await api.gitRevertTo(rev, identity ? `[${identity}] ${msg}` : msg)
         await refreshGit()
@@ -486,6 +487,7 @@ export function App() {
             <div className="browse-banner">
               <span>
                 👁 正在浏览历史版本 <code>{gitInfo?.headHash?.slice(0, 7)}</code>（只读）
+                {gitInfo?.browseStashed && <span className="dim">——未提交的修改已暂存，回来自动恢复</span>}
               </span>
               <button type="button" className="btn primary" onClick={() => void handleBackToLatest()}>
                 回到最新
