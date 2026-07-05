@@ -11,12 +11,26 @@ interface HistoryPanelProps {
   activeSection: { id: string; file: string; title: string } | null
   /** 当前身份：提交说明自动加 [名字] 前缀 */
   identity: string
+  /** 浏览模式（detached）下隐藏提交/恢复入口 */
+  readOnly: boolean
+  /** 当前浏览中的提交哈希（高亮标记） */
+  browsingHash: string | null
+  /** 切换到某提交浏览 */
+  onBrowse: (rev: string) => void
   /** 恢复前调用：丢弃该章节尚未落盘的编辑 */
   beforeRestore: (sectionId: string) => void
   onRestored: () => void
 }
 
-export function HistoryPanel({ activeSection, identity, beforeRestore, onRestored }: HistoryPanelProps) {
+export function HistoryPanel({
+  activeSection,
+  identity,
+  readOnly,
+  browsingHash,
+  onBrowse,
+  beforeRestore,
+  onRestored,
+}: HistoryPanelProps) {
   const [status, setStatus] = useState<GitStatusResult | null>(null)
   const [entries, setEntries] = useState<GitLogEntry[]>([])
   const [message, setMessage] = useState('')
@@ -109,29 +123,31 @@ export function HistoryPanel({ activeSection, identity, beforeRestore, onRestore
 
   return (
     <div className="history-panel">
-      <div className="commit-box">
-        <textarea
-          rows={2}
-          placeholder={dirtyCount > 0 ? `提交说明（${dirtyCount} 个文件有更改）…` : '工作区干净'}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void commit()
-          }}
-        />
-        <div className="commit-actions">
-          {dirtyCount > 0 && (
-            <button type="button" className="link-btn" onClick={() => void toggleDiff('worktree')}>
-              {openDiff?.key === 'worktree' ? '收起未提交更改' : '查看未提交更改'}
+      {!readOnly && (
+        <div className="commit-box">
+          <textarea
+            rows={2}
+            placeholder={dirtyCount > 0 ? `提交说明（${dirtyCount} 个文件有更改）…` : '工作区干净'}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void commit()
+            }}
+          />
+          <div className="commit-actions">
+            {dirtyCount > 0 && (
+              <button type="button" className="link-btn" onClick={() => void toggleDiff('worktree')}>
+                {openDiff?.key === 'worktree' ? '收起未提交更改' : '查看未提交更改'}
+              </button>
+            )}
+            <span className="spacer" />
+            <button type="button" className="btn primary" disabled={busy || !message.trim() || dirtyCount === 0} onClick={() => void commit()}>
+              提交
             </button>
-          )}
-          <span className="spacer" />
-          <button type="button" className="btn primary" disabled={busy || !message.trim() || dirtyCount === 0} onClick={() => void commit()}>
-            提交
-          </button>
+          </div>
+          {openDiff?.key === 'worktree' && <DiffView diff={openDiff.diff} />}
         </div>
-        {openDiff?.key === 'worktree' && <DiffView diff={openDiff.diff} />}
-      </div>
+      )}
 
       {error && <div className="compile-error-box">{error}</div>}
 
@@ -154,35 +170,49 @@ export function HistoryPanel({ activeSection, identity, beforeRestore, onRestore
       </div>
 
       <ul className="commit-list">
-        {entries.map((entry) => (
-          <li key={entry.hash}>
-            <div className="commit-row">
-              <button
-                type="button"
-                className="commit-main"
-                title="查看此提交的改动"
-                onClick={() => void toggleDiff(entry.hash, `${entry.hash}~1`, entry.hash)}
-              >
-                <span className="commit-msg">{entry.message}</span>
-                <span className="commit-meta">
-                  <code>{entry.hash.slice(0, 7)}</code> · {entry.author} ·{' '}
-                  {new Date(entry.date).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </button>
-              {activeSection && (
+        {entries.map((entry) => {
+          const isBrowsing = browsingHash === entry.hash
+          return (
+            <li key={entry.hash} className={isBrowsing ? 'browsing' : ''}>
+              <div className="commit-row">
+                <button
+                  type="button"
+                  className="commit-main"
+                  title="查看此提交的改动"
+                  onClick={() => void toggleDiff(entry.hash, `${entry.hash}~1`, entry.hash)}
+                >
+                  <span className="commit-msg">
+                    {isBrowsing && '👁 '}
+                    {entry.message}
+                  </span>
+                  <span className="commit-meta">
+                    <code>{entry.hash.slice(0, 7)}</code> · {entry.author} ·{' '}
+                    {new Date(entry.date).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </button>
                 <button
                   type="button"
                   className="icon-btn"
-                  title={`恢复「${activeSection.title}」到此版本`}
-                  onClick={() => void restore(entry)}
+                  title="切换到此版本浏览（只读，可随时回到最新）"
+                  onClick={() => onBrowse(entry.hash)}
                 >
-                  ⤺
+                  👁
                 </button>
-              )}
-            </div>
-            {openDiff?.key === entry.hash && <DiffView diff={openDiff.diff} />}
-          </li>
-        ))}
+                {activeSection && !readOnly && (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    title={`恢复「${activeSection.title}」到此版本`}
+                    onClick={() => void restore(entry)}
+                  >
+                    ⤺
+                  </button>
+                )}
+              </div>
+              {openDiff?.key === entry.hash && <DiffView diff={openDiff.diff} />}
+            </li>
+          )
+        })}
         {entries.length === 0 && <li className="dim" style={{ padding: 12 }}>暂无提交</li>}
       </ul>
     </div>

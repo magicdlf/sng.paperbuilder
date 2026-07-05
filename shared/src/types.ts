@@ -84,6 +84,10 @@ export interface GitLogEntry {
 export interface GitStatusResult {
   isRepo: boolean
   changedFiles: string[]
+  /** true = 处于历史版本浏览模式（detached HEAD，界面只读） */
+  detached: boolean
+  headHash: string | null
+  branch: string | null
 }
 
 export interface GitCommitResult {

@@ -6,6 +6,7 @@ import {
   getPaperSchema,
   mdToDoc,
   type CommentsFile,
+  type GitStatusResult,
   type LabelIndex,
   type ReferencesFile,
 } from '@himcm/shared'
@@ -41,6 +42,23 @@ export function App() {
     localStorage.setItem('himcm.identity', name)
     setIdentity(name)
   }, [])
+
+  // ---- git 状态（浏览历史版本时全局只读） ----
+  const [gitInfo, setGitInfo] = useState<GitStatusResult | null>(null)
+  const refreshGit = useCallback(async () => {
+    try {
+      setGitInfo(await api.gitStatus())
+    } catch {
+      /* 非致命 */
+    }
+  }, [])
+  useEffect(() => {
+    void refreshGit()
+    const onFocus = () => void refreshGit()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [refreshGit])
+  const browsing = Boolean(gitInfo?.detached)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [panel, setPanel] = useState<PanelTab | null>(null)
@@ -245,6 +263,78 @@ export function App() {
   )
 
   /** 把当前编辑器中 pos 处的图搬到目标章节末尾（文件在论文级 assets/，无需移动） */
+  /** 章节元信息变更；状态切到「待评审」时自动打一个评审检查点提交 */
+  const handleSectionMetaChange = useCallback(
+    (sectionId: string, sectionTitle: string, patch: { owner?: string | null; status?: string }) =>
+      guard(async () => {
+        if (patch.status === 'review') {
+          // 先把所有未保存内容落盘，检查点才完整
+          for (const s of snapshotRef.current?.sections ?? []) {
+            const st = saveStates[s.id]
+            if (st === 'dirty' || st === 'saving') await flushSection(s.id)
+          }
+        }
+        await api.patchSectionMeta(sectionId, patch)
+        if (patch.status === 'review') {
+          const msg = `《${sectionTitle}》提交评审`
+          await api.gitCommit(identity ? `[${identity}] ${msg}` : msg).catch(() => undefined)
+          await refreshGit()
+        }
+        await reload()
+      }),
+    [guard, saveStates, flushSection, identity, reload, refreshGit]
+  )
+
+  // reload 闭包里读取最新 snapshot 用
+  const snapshotRef = useRef(snapshot)
+  snapshotRef.current = snapshot
+
+  /** 浏览指定历史版本（detached，全局只读） */
+  const handleBrowseCommit = useCallback(
+    (rev: string) =>
+      guard(async () => {
+        // 有未保存内容先落盘；有未提交更改 server 会拒绝并提示
+        for (const s of snapshotRef.current?.sections ?? []) {
+          const st = saveStates[s.id]
+          if (st === 'dirty' || st === 'saving') await flushSection(s.id)
+        }
+        await api.gitCheckout(rev)
+        await refreshGit()
+        await reload()
+        setRestoreVersion((n) => n + 1)
+        recomputeNumbering()
+      }),
+    [guard, saveStates, flushSection, refreshGit, reload, recomputeNumbering]
+  )
+
+  const handleBackToLatest = useCallback(
+    () =>
+      guard(async () => {
+        await api.gitCheckoutLatest()
+        await refreshGit()
+        await reload()
+        setRestoreVersion((n) => n + 1)
+        recomputeNumbering()
+      }),
+    [guard, refreshGit, reload, recomputeNumbering]
+  )
+
+  const handleContinueFromHere = useCallback(
+    () =>
+      guard(async () => {
+        const rev = gitInfo?.headHash
+        if (!rev) return
+        if (!window.confirm(`把整个项目还原到 ${rev.slice(0, 7)} 并作为新提交？（历史不丢，可再切回）`)) return
+        const msg = `还原项目至 ${rev.slice(0, 7)}`
+        await api.gitRevertTo(rev, identity ? `[${identity}] ${msg}` : msg)
+        await refreshGit()
+        await reload()
+        setRestoreVersion((n) => n + 1)
+        recomputeNumbering()
+      }),
+    [guard, gitInfo, identity, refreshGit, reload, recomputeNumbering]
+  )
+
   const handleMoveFigureToSection = useCallback(
     (figurePos: number, targetSectionId: string) => {
       const editor = editorRef.current
@@ -362,19 +452,29 @@ export function App() {
           onMove={handleMove}
         />
         <main className="app-main">
+          {browsing && (
+            <div className="browse-banner">
+              <span>
+                👁 正在浏览历史版本 <code>{gitInfo?.headHash?.slice(0, 7)}</code>（只读）
+              </span>
+              <button type="button" className="btn primary" onClick={() => void handleBackToLatest()}>
+                回到最新
+              </button>
+              <button type="button" className="btn" onClick={() => void handleContinueFromHere()}>
+                从此版本继续（还原并提交）
+              </button>
+            </div>
+          )}
           {active && active.file ? (
             <>
-              <SectionBar
-                section={active}
-                members={m.members ?? []}
-                identity={identity}
-                onChangeMeta={(patch) =>
-                  guard(async () => {
-                    await api.patchSectionMeta(active.id, patch)
-                    await reload()
-                  })
-                }
-              />
+              {!browsing && (
+                <SectionBar
+                  section={active}
+                  members={m.members ?? []}
+                  identity={identity}
+                  onChangeMeta={(patch) => void handleSectionMetaChange(active.id, active.title, patch)}
+                />
+              )}
               {saveStates[active.id] === 'conflict' && (
                 <div className="conflict-banner">
                   <span>⚠ 该章节已被他人修改，你的保存被拦下。</span>
@@ -401,10 +501,10 @@ export function App() {
                 </div>
               )}
               <Editor
-                key={`${active.id}:${restoreVersion}`}
+                key={`${active.id}:${restoreVersion}:${browsing ? 'ro' : 'rw'}`}
                 sectionId={active.id}
                 initialMd={getMd(active.id)}
-                editable
+                editable={!browsing}
                 numbering={numbering}
                 onChangeMd={(md) => handleSectionChange(active.id, md)}
                 onReady={(editor) => {
@@ -437,6 +537,9 @@ export function App() {
                   active && active.file ? { id: active.id, file: active.file, title: active.title } : null
                 }
                 identity={identity}
+                readOnly={browsing}
+                browsingHash={gitInfo?.headHash ?? null}
+                onBrowse={handleBrowseCommit}
                 beforeRestore={discardPending}
                 onRestored={() => {
                   void reload().then(() => {

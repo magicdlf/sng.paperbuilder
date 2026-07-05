@@ -46,13 +46,57 @@ export class GitService {
   }
 
   async status(): Promise<GitStatusResult> {
-    if (!(await this.isRepo())) return { isRepo: false, changedFiles: [] }
+    if (!(await this.isRepo())) {
+      return { isRepo: false, changedFiles: [], detached: false, headHash: null, branch: null }
+    }
     const out = await this.git(['status', '--porcelain'])
     const changedFiles = out
       .split('\n')
       .filter(Boolean)
       .map((line) => line.slice(3).trim())
-    return { isRepo: true, changedFiles }
+
+    let branch: string | null = null
+    try {
+      branch = (await this.git(['symbolic-ref', '-q', '--short', 'HEAD'])).trim() || null
+    } catch {
+      branch = null // detached HEAD
+    }
+    let headHash: string | null = null
+    try {
+      headHash = (await this.git(['rev-parse', 'HEAD'])).trim()
+    } catch {
+      headHash = null // 空仓库
+    }
+    return { isRepo: true, changedFiles, detached: branch === null && headHash !== null, headHash, branch }
+  }
+
+  /** 浏览历史版本（detached HEAD）。要求工作区干净，否则拒绝。 */
+  async checkout(rev: string): Promise<void> {
+    const st = await this.status()
+    if (st.changedFiles.length > 0) throw new Error('有未提交的更改，请先提交后再切换版本')
+    await this.git(['checkout', rev])
+  }
+
+  /** 回到最新（唯一分支的顶端） */
+  async checkoutLatest(): Promise<void> {
+    const branches = (await this.git(['branch', '--format=%(refname:short)']))
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    const branch = branches.includes('main') ? 'main' : branches.includes('master') ? 'master' : branches[0]
+    if (!branch) throw new Error('仓库没有分支')
+    await this.git(['checkout', branch])
+  }
+
+  /**
+   * 把整个项目还原到某版本并作为新提交（历史继续向前）。
+   * 注意：rev 之后新增且 rev 中不存在的文件会保留（不做删除，安全优先）。
+   */
+  async revertProjectTo(rev: string, message: string): Promise<GitCommitResult> {
+    const st = await this.status()
+    if (st.detached) await this.checkoutLatest()
+    await this.git(['restore', '--source', rev, '--', '.'])
+    return this.commitAll(message)
   }
 
   async commitAll(message: string): Promise<GitCommitResult> {

@@ -650,3 +650,29 @@
   background: var(--accent-soft);
   color: var(--accent);
 }
+
+/* ---- 历史版本浏览模式 ---- */
+
+.browse-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: #eef2fb;
+  color: #35507e;
+  font-size: 13px;
+  border-bottom: 1px solid #d5ddf0;
+  flex-shrink: 0;
+}
+
+.browse-banner code {
+  font-family: var(--font-mono);
+  background: #dde5f6;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.commit-list li.browsing .commit-main {
+  background: #eef2fb;
+  border-radius: 7px;
+}

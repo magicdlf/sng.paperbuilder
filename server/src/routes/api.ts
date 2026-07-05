@@ -136,6 +136,26 @@ export function apiRoutes(ctx: ApiContext): Hono {
     return c.json({ ok: true })
   })
 
+  // 版本浏览与还原
+  api.post('/git/checkout', async (c) => {
+    const body = await c.req.json<{ rev?: string }>()
+    if (!body.rev) throw new HttpError(400, '需要 rev')
+    await cur().git.checkout(body.rev)
+    return c.json({ ok: true })
+  })
+
+  api.post('/git/checkout-latest', async (c) => {
+    await cur().git.checkoutLatest()
+    return c.json({ ok: true })
+  })
+
+  api.post('/git/revert-to', async (c) => {
+    const body = await c.req.json<{ rev?: string; message?: string }>()
+    if (!body.rev) throw new HttpError(400, '需要 rev')
+    const result = await cur().git.revertProjectTo(body.rev, body.message || `还原项目至 ${body.rev.slice(0, 7)}`)
+    return c.json(result)
+  })
+
   // ---- 导出与编译 ----
 
   api.post('/export', async (c) => {
