@@ -9,6 +9,8 @@ export interface LatexOptions {
   draftComments?: boolean
   /** commentId → 批注首条内容（草稿模式显示用） */
   commentTexts?: Record<string, string>
+  /** 图表浮动位置符：'htbp'（浮动）或 'H'（强制原地，需 float 包） */
+  floatPlacement?: string
 }
 
 interface LatexCtx extends LatexOptions {
@@ -42,7 +44,8 @@ function renderBlock(node: PMNode, opts: LatexCtx): string | null {
     case 'blockquote':
       return `\\begin{quote}\n${renderBlocks(node, opts).join('\n\n')}\n\\end{quote}`
     case 'codeBlock':
-      return `\\begin{verbatim}\n${node.textContent}\n\\end{verbatim}`
+      // listings + breaklines：长代码行自动换行（verbatim 会溢出页面）
+      return `\\begin{lstlisting}\n${node.textContent}\n\\end{lstlisting}`
     case 'bulletList':
       return renderList(node, 'itemize', opts)
     case 'orderedList':
@@ -93,7 +96,7 @@ function renderFigure(node: PMNode, opts: LatexCtx): string {
   const label = node.attrs.label ? `\\label{${node.attrs.label}}` : ''
   const caption = renderInline(node, opts)
   return [
-    '\\begin{figure}[htbp]',
+    `\\begin{figure}[${opts.floatPlacement ?? 'htbp'}]`,
     '\\centering',
     `\\includegraphics[width=${width.toFixed(2)}\\linewidth]{${src}}`,
     // 始终输出 \caption：保证图始终计数，编辑器编号与 PDF 一致
@@ -101,6 +104,9 @@ function renderFigure(node: PMNode, opts: LatexCtx): string {
     '\\end{figure}',
   ].join('\n')
 }
+
+/** 某列渲染后最长内容超过该阈值 → 用 tabularx 的 X 列自动换行，防止表格溢出页宽 */
+const WRAP_COLUMN_THRESHOLD = 40
 
 function renderTable(node: PMNode, opts: LatexCtx): string {
   const aligns = (node.attrs.aligns ?? null) as ColumnAlign[] | null
@@ -116,9 +122,21 @@ function renderTable(node: PMNode, opts: LatexCtx): string {
     else rows.push(cells)
   })
   if (!headerRow) return ''
-  const colCount = Math.max((headerRow as string[]).length, ...rows.map((r) => r.length), 1)
+  const allRows = [headerRow as string[], ...rows]
+  const colCount = Math.max(...allRows.map((r) => r.length), 1)
+
+  // 超长列 → tabularx 的 X 列（自动分宽 + 换行），防止表格溢出页宽；其余列保持 l/c/r
+  const wrapCols = Array.from({ length: colCount }, (_, i) =>
+    allRows.some((r) => (r[i] ?? '').length > WRAP_COLUMN_THRESHOLD)
+  )
+  const useTabularx = wrapCols.some(Boolean)
   const colSpec = Array.from({ length: colCount }, (_, i) => {
     const a = aligns?.[i]
+    if (wrapCols[i]) {
+      if (a === 'center') return '>{\\centering\\arraybackslash}X'
+      if (a === 'right') return '>{\\raggedleft\\arraybackslash}X'
+      return '>{\\raggedright\\arraybackslash}X'
+    }
     return a === 'center' ? 'c' : a === 'right' ? 'r' : 'l'
   }).join('')
 
@@ -128,17 +146,17 @@ function renderTable(node: PMNode, opts: LatexCtx): string {
     Array.from({ length: colCount }, (_, i) => cells[i] ?? '').join(' & ') + ' \\\\'
 
   const lines = [
-    '\\begin{table}[htbp]',
+    `\\begin{table}[${opts.floatPlacement ?? 'htbp'}]`,
     '\\centering',
     // 三线表：题注在表上方
     `\\caption{${caption}}${label}`,
-    `\\begin{tabular}{${colSpec}}`,
+    useTabularx ? `\\begin{tabularx}{\\textwidth}{${colSpec}}` : `\\begin{tabular}{${colSpec}}`,
     '\\toprule',
     line(headerRow),
     '\\midrule',
     ...(rows.length ? rows.map(line) : ['\\multicolumn{' + colCount + '}{c}{}\\\\']),
     '\\bottomrule',
-    '\\end{tabular}',
+    useTabularx ? '\\end{tabularx}' : '\\end{tabular}',
     '\\end{table}',
   ]
   return lines.join('\n')

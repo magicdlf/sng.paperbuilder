@@ -4,6 +4,8 @@
   "year": 2026,
   "problem": "A",
   "teamControlNumber": "0000000",
+  "title": "",
+  "keywords": [],
   "sections": [
     { "id": "summary", "file": "sections/00-summary.md", "role": "summary" },
     { "id": "introduction", "file": "sections/01-introduction.md", "role": "body" },
@@ -22,6 +24,8 @@
   "export": {
     "engine": "pdflatex",
     "draftComments": false,
-    "toc": true
+    "toc": true,
+    "layout": "official",
+    "floatPlacement": "float"
   }
 }

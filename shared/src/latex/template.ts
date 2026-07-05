@@ -25,20 +25,28 @@ export interface AssembledLatex {
 
 /** 基于 COMAP 官方 2025 模板的 preamble（pdflatex 原生路径） */
 function preamble(manifest: PaperManifest, draftComments: boolean): string {
+  const compact = manifest.export.layout === 'compact'
+  const geometry = compact
+    ? 'left=2cm,right=2cm,top=2.5cm,bottom=2cm'
+    : 'left=1in,top=1in,bottom=1in,right=0.75in'
+  const useFloat = manifest.export.floatPlacement === 'here' ? '\\usepackage{float}\n' : ''
   return `\\documentclass[12pt,letterpaper]{article}
 \\usepackage[T1]{fontenc}
 \\usepackage[utf8]{inputenc}
 \\usepackage{newtxtext,newtxmath}
-\\usepackage[letterpaper,left=1in,top=1in,bottom=1in,right=0.75in]{geometry}
+\\usepackage[letterpaper,${geometry}]{geometry}
 % 注意：不加载 amssymb —— newtxmath 已提供 AMS 符号，重复加载会因 \\Bbbk 冲突报错
 \\usepackage{amsmath}
 \\usepackage{graphicx}
+\\usepackage{xcolor}
 \\usepackage{booktabs}
+\\usepackage{tabularx}
 \\usepackage{caption}
+\\usepackage{listings}
 \\usepackage{soul}
 \\usepackage{fancyhdr}
 \\usepackage{lastpage}
-${draftComments ? '\\usepackage[colorinlistoftodos,textsize=footnotesize]{todonotes}\n' : ''}\\usepackage[hidelinks]{hyperref}
+${useFloat}${draftComments ? '\\usepackage[colorinlistoftodos,textsize=footnotesize]{todonotes}\n' : ''}\\usepackage[hidelinks]{hyperref}
 \\usepackage[nameinlink]{cleveref}
 
 \\pagestyle{fancy}
@@ -49,6 +57,8 @@ ${draftComments ? '\\usepackage[colorinlistoftodos,textsize=footnotesize]{todono
 \\setlength{\\headheight}{15pt}
 
 \\captionsetup{font=small,labelfont=bf}
+\\renewcommand{\\arraystretch}{1.15}
+\\lstset{basicstyle=\\ttfamily\\small,breaklines=true,breakatwhitespace=true,columns=fullflexible,keepspaces=true}
 `
 }
 
@@ -56,20 +66,31 @@ function summarySheetHeader(manifest: PaperManifest): string {
   const problem = escapeLatex(manifest.problem)
   const team = escapeLatex(manifest.teamControlNumber)
   const contest = escapeLatex(`${manifest.year} ${manifest.contest}`)
-  return `\\noindent
+  const title = (manifest.title ?? '').trim()
+  // summary 页不显示页眉（官方模板原样）；问题号/队号为红色大字
+  return `\\thispagestyle{empty}
+\\noindent
 \\begin{minipage}[t]{0.3\\textwidth}\\centering
-Problem Chosen\\\\[2pt]
-{\\Large\\bfseries ${problem}}
+\\textbf{Problem Chosen}\\\\[2pt]
+{\\Huge\\bfseries\\color{red} ${problem}}
 \\end{minipage}%
 \\begin{minipage}[t]{0.4\\textwidth}\\centering
-${contest}\\\\
-Summary Sheet
+\\textbf{${contest}}\\\\
+\\textbf{Summary Sheet}
 \\end{minipage}%
 \\begin{minipage}[t]{0.3\\textwidth}\\centering
-Team Control Number\\\\[2pt]
-{\\Large\\bfseries ${team}}
+\\textbf{Team Control Number}\\\\[2pt]
+{\\Huge\\bfseries\\color{red} ${team}}
 \\end{minipage}
-\\par\\vspace{6pt}\\hrule\\vspace{16pt}`
+\\par\\vspace{6pt}\\hrule\\vspace{14pt}${
+    title ? `\n\\begin{center}\n{\\large\\bfseries ${escapeLatex(title)}}\n\\end{center}` : ''
+  }`
+}
+
+function keywordsLine(manifest: PaperManifest): string | null {
+  const keywords = (manifest.keywords ?? []).map((k) => k.trim()).filter(Boolean)
+  if (keywords.length === 0) return null
+  return `\\vspace{0.4cm}\n\\noindent\\textbf{Keywords: } ${keywords.map(escapeLatex).join(', ')}`
 }
 
 function formatReference(ref: Reference): string {
@@ -105,6 +126,7 @@ export function assemblePaper(input: AssembleInput): AssembledLatex {
     numberedHeadings: numbered,
     draftComments: draft,
     commentTexts: input.commentTexts,
+    floatPlacement: manifest.export.floatPlacement === 'here' ? 'H' : 'htbp',
   })
 
   /** summary/ai-report 的首个 H1 是文件标题，正文中不重复输出 */
@@ -121,8 +143,17 @@ export function assemblePaper(input: AssembleInput): AssembledLatex {
       case 'summary': {
         chunks.push({ text: summarySheetHeader(manifest) })
         if (doc) chunks.push({ text: docToLatex(dropLeadingH1(doc), latexOpts(false)), sectionId: meta.id })
+        const keywords = keywordsLine(manifest)
+        if (keywords) chunks.push({ text: keywords })
         chunks.push({ text: '\\newpage\n' })
-        if (manifest.export.toc) chunks.push({ text: '\\tableofcontents\n\\newpage\n' })
+        if (manifest.export.toc) {
+          // 紧凑模式目录用小字号省空间
+          const toc =
+            manifest.export.layout === 'compact'
+              ? '\\begingroup\\small\n\\tableofcontents\n\\endgroup\n\\newpage\n'
+              : '\\tableofcontents\n\\newpage\n'
+          chunks.push({ text: toc })
+        }
         break
       }
       case 'body': {

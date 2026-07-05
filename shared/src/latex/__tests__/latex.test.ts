@@ -88,6 +88,24 @@ describe('docToLatex 构件映射', () => {
     expect(latexOf('3. x\n4. y\n')).toContain('\\setcounter{enumi}{2}')
     expect(latexOf('> q\n')).toBe('\\begin{quote}\nq\n\\end{quote}')
   })
+
+  it('代码块用 listings（长行自动换行）', () => {
+    expect(latexOf('```python\nprint(1)\n```\n')).toBe('\\begin{lstlisting}\nprint(1)\n\\end{lstlisting}')
+  })
+
+  it('超长列自动切换 tabularx X 列', () => {
+    const long = 'a very long description that clearly exceeds the wrap threshold for sure'
+    const tex = latexOf(`| Sym | Definition |\n| --- | --- |\n| $x$ | ${long} |\n`)
+    expect(tex).toContain('\\begin{tabularx}{\\textwidth}{l>{\\raggedright\\arraybackslash}X}')
+    expect(tex).toContain('\\end{tabularx}')
+    // 短表保持普通 tabular
+    expect(latexOf('| a | b |\n| --- | --- |\n| 1 | 2 |\n')).toContain('\\begin{tabular}{ll}')
+  })
+
+  it('floatPlacement=H 时图表用 [H]', () => {
+    const tex = docToLatex(mdToDoc('![c](a.png)\n'), { numberedHeadings: true, floatPlacement: 'H' })
+    expect(tex).toContain('\\begin{figure}[H]')
+  })
 })
 
 describe('assemblePaper', () => {
@@ -97,6 +115,8 @@ describe('assemblePaper', () => {
     year: 2026,
     problem: 'B',
     teamControlNumber: '1234567',
+    title: 'Optimal Evacuation Sweeps',
+    keywords: ['Cellular Automation', 'Path-finding'],
     sections: [
       { id: 'summary', file: 'sections/00-summary.md', role: 'summary' },
       { id: 'intro', file: 'sections/01-intro.md', role: 'body' },
@@ -129,8 +149,11 @@ describe('assemblePaper', () => {
     expect(tex).toContain('Team \\#~1234567')
     expect(tex).toContain('Page \\thepage\\ of \\pageref{LastPage}')
     expect(tex).toContain('Problem Chosen')
-    expect(tex).toContain('{\\Large\\bfseries B}')
+    expect(tex).toContain('{\\Huge\\bfseries\\color{red} B}')
     expect(tex).toContain('2026 HiMCM')
+    expect(tex).toContain('\\thispagestyle{empty}')
+    expect(tex).toContain('{\\large\\bfseries Optimal Evacuation Sweeps}')
+    expect(tex).toContain('\\textbf{Keywords: } Cellular Automation, Path-finding')
     expect(tex).toContain('\\tableofcontents')
     expect(tex).toContain('\\appendix')
     expect(tex).toContain('\\begin{thebibliography}')

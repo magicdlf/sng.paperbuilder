@@ -159,15 +159,42 @@ function MetaForm({
   const [team, setTeam] = useState(manifest.teamControlNumber)
   const [problem, setProblem] = useState(manifest.problem)
   const [year, setYear] = useState(String(manifest.year))
+  const [title, setTitle] = useState(manifest.title ?? '')
+  const [keywords, setKeywords] = useState((manifest.keywords ?? []).join(', '))
 
   useEffect(() => {
     setTeam(manifest.teamControlNumber)
     setProblem(manifest.problem)
     setYear(String(manifest.year))
+    setTitle(manifest.title ?? '')
+    setKeywords((manifest.keywords ?? []).join(', '))
   }, [manifest])
+
+  const commitKeywords = () => {
+    const list = keywords.split(/[,，;；]/).map((s) => s.trim()).filter(Boolean)
+    if (list.join(', ') !== (manifest.keywords ?? []).join(', ')) void onPatch({ keywords: list })
+  }
 
   return (
     <div className="meta-form">
+      <label>
+        <span>论文标题（summary 页居中显示，可空）</span>
+        <input
+          value={title}
+          placeholder="Building Evacuation Sweeps"
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => title !== (manifest.title ?? '') && void onPatch({ title })}
+        />
+      </label>
+      <label>
+        <span>关键词（逗号分隔，可空）</span>
+        <input
+          value={keywords}
+          placeholder="Cellular Automation, Path-finding"
+          onChange={(e) => setKeywords(e.target.value)}
+          onBlur={commitKeywords}
+        />
+      </label>
       <label>
         <span>队伍控制码</span>
         <input
@@ -211,6 +238,28 @@ function MetaForm({
             onChange={(e) => void onPatch({ export: { draftComments: e.target.checked } })}
           />
           <span>批注边注（草稿）</span>
+        </label>
+      </div>
+      <div className="meta-row">
+        <label className="inline">
+          <span>边距</span>
+          <select
+            value={manifest.export.layout ?? 'official'}
+            onChange={(e) => void onPatch({ export: { layout: e.target.value } })}
+          >
+            <option value="official">官方（1in）</option>
+            <option value="compact">紧凑（2cm，压页数）</option>
+          </select>
+        </label>
+        <label className="inline">
+          <span>图表位置</span>
+          <select
+            value={manifest.export.floatPlacement ?? 'float'}
+            onChange={(e) => void onPatch({ export: { floatPlacement: e.target.value } })}
+          >
+            <option value="float">自动浮动（htbp）</option>
+            <option value="here">固定原地（H）</option>
+          </select>
         </label>
       </div>
       <label className="inline">

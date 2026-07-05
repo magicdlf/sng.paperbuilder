@@ -15,6 +15,10 @@ export interface PaperExportConfig {
   /** true 时批注导出为 todonotes 边注（草稿模式） */
   draftComments: boolean
   toc: boolean
+  /** official：COMAP 模板 1in 边距；compact：2cm 边距 + 小字号目录（临近 25 页上限时压页数） */
+  layout?: 'official' | 'compact'
+  /** float：[htbp] 浮动（规范）；here：[H] 强制原地（图表死跟文字） */
+  floatPlacement?: 'float' | 'here'
 }
 
 export interface PaperManifest {
@@ -23,6 +27,10 @@ export interface PaperManifest {
   year: number
   problem: string
   teamControlNumber: string
+  /** 论文标题（summary 页居中显示） */
+  title?: string
+  /** 关键词（summary 内容之后的 Keywords 行） */
+  keywords?: string[]
   sections: SectionMeta[]
   bibliography: string
   export: PaperExportConfig

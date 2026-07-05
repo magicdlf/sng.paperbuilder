@@ -193,6 +193,8 @@ export class ProjectStore {
     problem?: string
     year?: number
     contest?: string
+    title?: string
+    keywords?: string[]
     export?: Partial<PaperManifest['export']>
     order?: string[]
   }): Promise<PaperManifest> {
@@ -200,6 +202,11 @@ export class ProjectStore {
     if (patch.teamControlNumber !== undefined) manifest.teamControlNumber = String(patch.teamControlNumber)
     if (patch.problem !== undefined) manifest.problem = String(patch.problem)
     if (patch.contest !== undefined) manifest.contest = String(patch.contest)
+    if (patch.title !== undefined) manifest.title = String(patch.title)
+    if (patch.keywords !== undefined) {
+      if (!Array.isArray(patch.keywords)) throw new HttpError(400, 'keywords 必须是数组')
+      manifest.keywords = patch.keywords.map(String)
+    }
     if (patch.year !== undefined) {
       const y = Number(patch.year)
       if (!Number.isInteger(y) || y < 2000 || y > 2100) throw new HttpError(400, `年份不合法: ${patch.year}`)
