@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { Editor } from '@tiptap/core'
 import { useEditorState } from '@tiptap/react'
 import { RefPicker, TableSettings, Dropdown } from './InsertMenus.tsx'
-import { moveBlock } from './moveBlock.ts'
 
 interface ToolbarProps {
   editor: Editor
@@ -182,9 +181,7 @@ export function Toolbar({ editor, onInsertMath, onInsertImage, onAddComment }: T
       {s.inTable && (
         <>
           <span className="tb-sep" />
-          <Btn label="表⚙" title="表格设置" active={menu === 'table'} onClick={() => setMenu(menu === 'table' ? null : 'table')} />
-          <Btn label="表↑" title="表格上移（Alt+↑）" onClick={() => moveBlock(editor, -1)} />
-          <Btn label="表↓" title="表格下移（Alt+↓）" onClick={() => moveBlock(editor, 1)} />
+          <Btn label="表⚙" title="表格设置（题注/标号/对齐/行列）" active={menu === 'table'} onClick={() => setMenu(menu === 'table' ? null : 'table')} />
         </>
       )}
 

@@ -222,8 +222,16 @@ export class ProjectStore {
 
   async saveAsset(filename: string, data: Uint8Array): Promise<string> {
     const ext = (path.extname(filename) || '.png').toLowerCase()
-    const hash = crypto.createHash('sha1').update(data).digest('hex').slice(0, 12)
-    const rel = path.posix.join('assets', `${hash}${ext}`)
+    // 命名 = 原名 slug + 内容短哈希：可读（git status 里认得出）、去重（同图同名幂等）、LaTeX 安全
+    const base = path.basename(filename, path.extname(filename))
+    const slug = base
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40)
+    const hash = crypto.createHash('sha1').update(data).digest('hex').slice(0, 8)
+    const name = slug && slug !== 'image' ? `${slug}-${hash}${ext}` : `img-${hash}${ext}`
+    const rel = path.posix.join('assets', name)
     await fs.mkdir(path.join(this.paperDir, 'assets'), { recursive: true })
     await fs.writeFile(path.join(this.paperDir, rel), data)
     return rel

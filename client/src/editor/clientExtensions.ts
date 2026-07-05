@@ -8,6 +8,7 @@ import { FigureView } from './nodeviews/FigureView.tsx'
 import { CrossRefChip } from './nodeviews/CrossRefChip.tsx'
 import { CitationChip } from './nodeviews/CitationChip.tsx'
 import { NumberingExtension } from './numberingPlugin.ts'
+import { TableHoverControls } from './tableControls.ts'
 import { moveBlock } from './moveBlock.ts'
 
 export interface MathClickHandler {
@@ -116,6 +117,7 @@ export function clientExtensions(onMathClick: MathClickHandler): AnyExtension[] 
     }),
     MergeBlocker,
     NumberingExtension,
+    TableHoverControls,
     MoveBlockKeys,
   ]
 }

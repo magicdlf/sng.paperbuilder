@@ -14,6 +14,11 @@ export function FigureView({ node, selected, editor, getPos, updateAttributes, d
   return (
     <NodeViewWrapper as="figure" className={`figure-view${selected ? ' selected' : ''}`} data-figure="">
       <img src={String(node.attrs.src)} alt="" style={{ width: `${width}%` }} draggable={false} data-drag-handle="" />
+      {!selected && (
+        <div className="figure-hover-hint" contentEditable={false}>
+          点击图片：宽度 / 标号 / 移动（Alt+↑/↓）
+        </div>
+      )}
       {selected && (
         <div className="figure-controls" contentEditable={false}>
           <label>

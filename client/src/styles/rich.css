@@ -390,3 +390,86 @@
   gap: 8px;
   margin-top: 6px;
 }
+
+/* ---- 表格 hover 浮动控制 ---- */
+
+.table-controls {
+  position: relative;
+  height: 0;
+}
+
+.table-controls-inner {
+  position: absolute;
+  right: 0;
+  top: 4px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  font-family: var(--font-ui);
+}
+
+/* 悬停紧随其后的表格（或控制条本身）时显示 */
+.table-controls:has(+ .tableWrapper:hover) .table-controls-inner,
+.table-controls:has(+ table:hover) .table-controls-inner,
+.table-controls:hover .table-controls-inner {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.table-controls-inner button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: var(--text);
+}
+
+.table-controls-inner button:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.table-controls-inner .hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding-left: 4px;
+  border-left: 1px solid var(--border);
+}
+
+/* ---- 图 hover 提示 ---- */
+
+.figure-view {
+  position: relative;
+}
+
+.figure-hover-hint {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  background: rgba(38, 34, 28, 0.78);
+  color: #fff;
+  border-radius: 999px;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.figure-view:hover .figure-hover-hint {
+  opacity: 1;
+}
