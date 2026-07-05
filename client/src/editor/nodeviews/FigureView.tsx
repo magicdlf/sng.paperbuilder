@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { moveNodeAt } from '../moveBlock.ts'
+import { useNumbering } from '../NumberingContext.ts'
 import { api } from '../../api.ts'
 
 /** 图节点视图：图片 + 选中时的工具集（移动/替换/删除 + 宽度/标号）+ 可编辑题注 */
 export function FigureView({ node, selected, editor, getPos, updateAttributes, deleteNode }: NodeViewProps) {
+  const numbering = useNumbering()
   const attrWidth = (node.attrs.width as number | null) ?? 70
   // 拖动滑块期间只改本地值（图片实时预览），松手才提交事务——
   // 否则每格一个事务会重建 NodeView，拖拽断裂且 undo 被灌满
@@ -25,9 +27,11 @@ export function FigureView({ node, selected, editor, getPos, updateAttributes, d
 
   // figure 有可编辑题注（contentDOM），PM 默认把点击解析成"光标进题注"，
   // 永远不会产生 NodeSelection → 工具集不出现。这里显式选中整个节点。
+  // focus 必须显式带上：img 的 mousedown 被 preventDefault，浏览器不会自动聚焦编辑器，
+  // 否则选中后 ⌘X/⌘C/Backspace 都不生效。
   const selectSelf = () => {
     const pos = getPos()
-    if (pos !== undefined) editor.commands.setNodeSelection(pos)
+    if (pos !== undefined) editor.chain().setNodeSelection(pos).focus().run()
   }
 
   const replaceImage = async (file: File) => {
@@ -84,6 +88,29 @@ export function FigureView({ node, selected, editor, getPos, updateAttributes, d
             >
               🗑 删除
             </button>
+            {numbering && numbering.onMoveFigureToSection && (
+              <select
+                className="fig-btn fig-select"
+                value=""
+                title="把图搬到其它章节末尾（也可 ⌘X 剪切后到目标位置 ⌘V 粘贴）"
+                onChange={(e) => {
+                  const target = e.target.value
+                  const pos = getPos()
+                  if (target && pos !== undefined) numbering.onMoveFigureToSection!(pos, target)
+                }}
+              >
+                <option value="" disabled>
+                  移至章节…
+                </option>
+                {numbering.sections
+                  .filter((s) => s.id !== numbering.sectionId)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.title}
+                    </option>
+                  ))}
+              </select>
+            )}
           </div>
           <div className="figure-controls-row">
             <label>

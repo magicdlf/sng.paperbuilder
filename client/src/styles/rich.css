@@ -514,3 +514,9 @@
   color: var(--danger);
   border-color: var(--danger);
 }
+
+.fig-select {
+  appearance: none;
+  max-width: 110px;
+  color: var(--text-dim);
+}

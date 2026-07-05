@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Editor as TiptapEditor } from '@tiptap/core'
 import {
   buildLabelIndex,
+  docToMd,
+  getPaperSchema,
   mdToDoc,
   type CommentsFile,
   type LabelIndex,
@@ -220,15 +222,34 @@ export function App() {
     [guard, snapshot, reload]
   )
 
+  /** 把当前编辑器中 pos 处的图搬到目标章节末尾（文件在论文级 assets/，无需移动） */
+  const handleMoveFigureToSection = useCallback(
+    (figurePos: number, targetSectionId: string) => {
+      const editor = editorRef.current
+      if (!editor || !activeId || targetSectionId === activeId) return
+      const node = editor.state.doc.nodeAt(figurePos)
+      if (!node || node.type.name !== 'figure') return
+      // 序列化为独立 md 块，追加到目标章节
+      const figMd = docToMd(getPaperSchema().topNodeType.create(null, node))
+      const targetMd = getMd(targetSectionId)
+      updateSection(targetSectionId, targetMd.replace(/\n*$/, '\n\n') + figMd)
+      // 从当前文档删除（触发 onUpdate → 自动保存 + 编号重算）
+      editor.view.dispatch(editor.state.tr.delete(figurePos, figurePos + node.nodeSize))
+    },
+    [activeId, getMd, updateSection]
+  )
+
   const numbering = useMemo((): NumberingData | null => {
-    if (!labelIndex || !activeId) return null
+    if (!labelIndex || !activeId || !snapshot) return null
     return {
       labelIndex,
       sectionId: activeId,
       refOrder: Object.fromEntries(references.references.map((r, i) => [r.key, i + 1])),
       references: references.references,
+      sections: snapshot.sections.filter((s) => s.file).map((s) => ({ id: s.id, title: s.title })),
+      onMoveFigureToSection: handleMoveFigureToSection,
     }
-  }, [labelIndex, activeId, references])
+  }, [labelIndex, activeId, references, snapshot, handleMoveFigureToSection])
 
   const globalSaveState = useMemo(() => {
     const states = Object.values(saveStates)
