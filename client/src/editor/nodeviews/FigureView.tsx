@@ -11,9 +11,23 @@ export function FigureView({ node, selected, editor, getPos, updateAttributes, d
     if (pos !== undefined) moveNodeAt(editor, pos, dir)
   }
 
+  // figure 有可编辑题注（contentDOM），PM 默认把点击解析成"光标进题注"，
+  // 永远不会产生 NodeSelection → 控制条不出现。这里显式选中整个节点。
+  const selectSelf = () => {
+    const pos = getPos()
+    if (pos !== undefined) editor.commands.setNodeSelection(pos)
+  }
+
   return (
     <NodeViewWrapper as="figure" className={`figure-view${selected ? ' selected' : ''}`} data-figure="">
-      <img src={String(node.attrs.src)} alt="" style={{ width: `${width}%` }} draggable={false} data-drag-handle="" />
+      <img
+        src={String(node.attrs.src)}
+        alt=""
+        style={{ width: `${width}%` }}
+        draggable={false}
+        data-drag-handle=""
+        onClick={selectSelf}
+      />
       {!selected && (
         <div className="figure-hover-hint" contentEditable={false}>
           点击图片：宽度 / 标号 / 移动（Alt+↑/↓）
