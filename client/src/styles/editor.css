@@ -280,9 +280,11 @@
   white-space: nowrap;
 }
 
-/* ---- 批注高亮 ---- */
+/* ---- 批注高亮 ----
+   锚点 mark 本身不着色；高亮由 decoration（.comment-open）只画在 open 线程上：
+   resolve → 高亮消失（锚点保留），reopen → 高亮恢复 */
 
-.tiptap span[data-comment-id] {
+.tiptap .comment-open {
   background: #fff3c2;
   border-bottom: 2px solid #e8c34a;
 }

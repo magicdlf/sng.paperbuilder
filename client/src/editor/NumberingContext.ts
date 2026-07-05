@@ -12,6 +12,8 @@ export interface NumberingData {
   sections: Array<{ id: string; title: string }>
   /** 把 pos 处的图搬到目标章节末尾 */
   onMoveFigureToSection?: (figurePos: number, targetSectionId: string) => void
+  /** open 状态的批注 id：只有这些锚点渲染高亮（resolved 收起，reopen 恢复） */
+  openCommentIds: string[]
 }
 
 export const NumberingContext = createContext<NumberingData | null>(null)

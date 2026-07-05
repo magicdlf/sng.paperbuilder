@@ -391,8 +391,9 @@ export function App() {
       references: references.references,
       sections: snapshot.sections.filter((s) => s.file).map((s) => ({ id: s.id, title: s.title })),
       onMoveFigureToSection: handleMoveFigureToSection,
+      openCommentIds: comments.comments.filter((c) => c.status === 'open').map((c) => c.id),
     }
-  }, [labelIndex, activeId, references, snapshot, handleMoveFigureToSection])
+  }, [labelIndex, activeId, references, snapshot, handleMoveFigureToSection, comments])
 
   const globalSaveState = useMemo(() => {
     const states = Object.values(saveStates)

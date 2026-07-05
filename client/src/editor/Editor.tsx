@@ -131,11 +131,11 @@ export function Editor({
   )
   editorRef.current = editor
 
-  // 编号数据变化 → 同步到扩展 storage 并触发装饰重建
+  // 编号/批注状态变化 → 同步到扩展 storage 并触发装饰重建
   useEffect(() => {
     if (!editor) return
-    const counters = numbering?.labelIndex.sectionStart[sectionId] ?? null
-    editor.storage.himcmNumbering.counters = counters
+    editor.storage.himcmNumbering.counters = numbering?.labelIndex.sectionStart[sectionId] ?? null
+    editor.storage.himcmNumbering.openCommentIds = numbering ? new Set(numbering.openCommentIds) : null
     editor.view.dispatch(editor.state.tr.setMeta('himcmNumbering', true))
   }, [editor, numbering, sectionId])
 

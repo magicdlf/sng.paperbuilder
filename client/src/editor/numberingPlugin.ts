@@ -11,6 +11,8 @@ import type { SectionCounters } from '@himcm/shared'
 
 export interface NumberingStorage {
   counters: SectionCounters | null
+  /** open 批注 id；null = 尚未加载（不画高亮） */
+  openCommentIds: Set<string> | null
 }
 
 declare module '@tiptap/core' {
@@ -29,7 +31,11 @@ function widget(className: string, text: string, title?: string): HTMLElement {
   return el
 }
 
-function buildDecorations(doc: PMNode, counters: SectionCounters | null): DecorationSet {
+function buildDecorations(
+  doc: PMNode,
+  counters: SectionCounters | null,
+  openCommentIds: Set<string> | null
+): DecorationSet {
   if (!counters) return DecorationSet.empty
   const decos: Decoration[] = []
   let fig = counters.fig
@@ -37,6 +43,15 @@ function buildDecorations(doc: PMNode, counters: SectionCounters | null): Decora
   let eq = counters.eq
 
   doc.descendants((node, pos) => {
+    // 批注高亮只画在 open 线程的锚点上（resolved/已删除线程的锚点不显示）
+    if (node.isText && openCommentIds) {
+      for (const mark of node.marks) {
+        if (mark.type.name === 'comment' && openCommentIds.has(String(mark.attrs.commentId))) {
+          decos.push(Decoration.inline(pos, pos + node.nodeSize, { class: 'comment-open' }))
+          break
+        }
+      }
+    }
     switch (node.type.name) {
       case 'figure': {
         fig++
@@ -85,20 +100,20 @@ export const NumberingExtension = Extension.create<Record<string, never>, Number
   name: 'himcmNumbering',
 
   addStorage() {
-    return { counters: null }
+    return { counters: null, openCommentIds: null }
   },
 
   addProseMirrorPlugins() {
-    const getCounters = () => this.storage.counters
+    const storage = this.storage
     return [
       new Plugin({
         key,
         state: {
-          init: (_config, state) => buildDecorations(state.doc, getCounters()),
+          init: (_config, state) => buildDecorations(state.doc, storage.counters, storage.openCommentIds),
           apply: (tr, old, _oldState, newState) => {
             // 文档变化或外部触发（空事务）时重建；小文档全量重建成本可忽略
             if (!tr.docChanged && !tr.getMeta('himcmNumbering')) return old
-            return buildDecorations(newState.doc, getCounters())
+            return buildDecorations(newState.doc, storage.counters, storage.openCommentIds)
           },
         },
         props: {
