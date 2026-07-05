@@ -83,7 +83,9 @@ export function MathPopover({ state, onSave, onDelete, onClose }: MathPopoverPro
         {state.kind === 'block' && (
           <input
             className="label-input mono"
-            placeholder="eq:name（编号用，可空）"
+            style={{ width: 180 }}
+            placeholder="标号，如 eq:growth"
+            title="设置标号后公式获得编号 (1)，正文中可用 ＠ 插入交叉引用；留空则不编号"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
           />

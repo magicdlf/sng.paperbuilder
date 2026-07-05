@@ -21,10 +21,11 @@ declare module '@tiptap/core' {
 
 const key = new PluginKey('himcmNumbering')
 
-function widget(className: string, text: string): HTMLElement {
+function widget(className: string, text: string, title?: string): HTMLElement {
   const el = document.createElement('span')
   el.className = className
   el.textContent = text
+  if (title) el.title = title
   return el
 }
 
@@ -48,11 +49,15 @@ function buildDecorations(doc: PMNode, counters: SectionCounters | null): Decora
       case 'table': {
         tbl++
         const caption = String(node.attrs.caption ?? '')
-        const label = node.attrs.label ? `  {#${node.attrs.label}}` : ''
-        // 题注在表下方（用户偏好，与 PDF 输出一致）
+        const label = node.attrs.label as string | null
+        // 题注在表下方（用户偏好，与 PDF 输出一致）；标号只在悬停提示里显示
         decos.push(
           Decoration.widget(pos + node.nodeSize, () =>
-            widget('table-caption-line', `Table ${tbl}: ${caption || '（点击工具栏「表格设置」添加题注）'}${label}`)
+            widget(
+              'table-caption-line',
+              `Table ${tbl}: ${caption || '（点击工具栏「表格设置」添加题注）'}`,
+              label ? `标号 ${label}（交叉引用用 [@${label}]）` : undefined
+            )
           )
         )
         return true
@@ -60,9 +65,10 @@ function buildDecorations(doc: PMNode, counters: SectionCounters | null): Decora
       case 'blockMath': {
         if (node.attrs.label) {
           eq++
+          const label = String(node.attrs.label)
           decos.push(
             Decoration.widget(pos + node.nodeSize, () =>
-              widget('eq-number', `(${eq})  {#${node.attrs.label}}`)
+              widget('eq-number', `(${eq})`, `标号 ${label}（交叉引用用 [@${label}]）`)
             )
           )
         }

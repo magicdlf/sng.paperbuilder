@@ -28,7 +28,7 @@
   font-size: 0.85em;
   font-family: var(--font-mono);
   user-select: none;
-  pointer-events: none;
+  cursor: help;
 }
 
 /* ---- 图节点 ---- */
