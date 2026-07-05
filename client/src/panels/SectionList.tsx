@@ -23,6 +23,8 @@ interface SectionListProps {
 export function SectionList({ snapshot, activeId, saveStates, onSelect, onCreate, onDelete, onMove }: SectionListProps) {
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
+  // 结构编辑锁：默认上锁，防止误点移动/删除；每次加载重新上锁（安全优先）
+  const [locked, setLocked] = useState(true)
 
   const submit = () => {
     const t = title.trim()
@@ -35,9 +37,23 @@ export function SectionList({ snapshot, activeId, saveStates, onSelect, onCreate
     <nav className="section-list">
       <div className="section-list-header">
         <span>章节</span>
-        <button type="button" className="icon-btn" title="新建章节" onClick={() => setAdding(true)}>
-          ＋
+        <span className="spacer" />
+        <button
+          type="button"
+          className={`icon-btn lock-btn${locked ? '' : ' unlocked'}`}
+          title={locked ? '已锁定：解锁后才能新建/移动/删除章节' : '已解锁：可调整章节结构（点击重新锁定）'}
+          onClick={() => {
+            setLocked(!locked)
+            setAdding(false)
+          }}
+        >
+          {locked ? '🔒' : '🔓'}
         </button>
+        {!locked && (
+          <button type="button" className="icon-btn" title="新建章节" onClick={() => setAdding(true)}>
+            ＋
+          </button>
+        )}
       </div>
       {adding && (
         <div className="section-add">
@@ -61,17 +77,28 @@ export function SectionList({ snapshot, activeId, saveStates, onSelect, onCreate
           const badge = ROLE_BADGE[s.role]
           const state = saveStates[s.id]
           const movable = s.role === 'body'
+          const status = s.status ?? 'draft'
           return (
             <li key={s.id} className={s.id === activeId ? 'active' : ''}>
               <button type="button" className="section-item" onClick={() => onSelect(s.id)}>
                 <span className="section-title">
                   {state === 'dirty' || state === 'saving' ? <span className="dot" title="未保存" /> : null}
-                  {state === 'error' ? <span className="dot error" title="保存失败" /> : null}
+                  {state === 'error' || state === 'conflict' ? <span className="dot error" title="保存失败/冲突" /> : null}
+                  {s.file && status !== 'draft' && (
+                    <span className={`status-dot ${status}`} title={status === 'review' ? '待评审' : '已完成'} />
+                  )}
                   {s.title}
                 </span>
-                {badge && <span className="badge">{badge}</span>}
+                <span className="section-badges">
+                  {s.owner && (
+                    <span className="owner-badge" title={`负责人：${s.owner}`}>
+                      {s.owner.slice(0, 2)}
+                    </span>
+                  )}
+                  {badge && <span className="badge">{badge}</span>}
+                </span>
               </button>
-              {s.id === activeId && movable && (
+              {s.id === activeId && movable && !locked && (
                 <span className="section-actions">
                   <button type="button" className="icon-btn" title="上移" onClick={() => onMove(s.id, -1)}>
                     ↑

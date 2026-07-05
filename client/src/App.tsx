@@ -21,10 +21,26 @@ import { ReferencesPanel } from './panels/ReferencesPanel.tsx'
 import { HistoryPanel } from './panels/HistoryPanel.tsx'
 import { CommentsPanel } from './panels/CommentsPanel.tsx'
 import { PaperSwitcher } from './panels/PaperSwitcher.tsx'
+import { IdentityPicker, SectionBar } from './panels/TeamBar.tsx'
 
 export function App() {
-  const { snapshot, loadError, reload, updateSection, flushSection, discardPending, getMd, getAllMd, saveStates } =
-    useProject()
+  const {
+    snapshot,
+    loadError,
+    reload,
+    updateSection,
+    flushSection,
+    discardPending,
+    resolveConflict,
+    getMd,
+    getAllMd,
+    saveStates,
+  } = useProject()
+  const [identity, setIdentity] = useState(() => localStorage.getItem('himcm.identity') ?? '')
+  const changeIdentity = useCallback((name: string) => {
+    localStorage.setItem('himcm.identity', name)
+    setIdentity(name)
+  }, [])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [panel, setPanel] = useState<PanelTab | null>(null)
@@ -82,14 +98,14 @@ export function App() {
             status: 'open',
             createdAt: now,
             anchorText: info.anchorText,
-            thread: [{ id: `m_${Date.now().toString(36)}`, at: now, text: info.text }],
+            thread: [{ id: `m_${Date.now().toString(36)}`, at: now, text: info.text, author: identity || undefined }],
           },
           ...comments.comments,
         ],
       })
       setPanel('comments')
     },
-    [activeId, comments, persistComments]
+    [activeId, comments, persistComments, identity]
   )
 
   const handleReply = useCallback(
@@ -98,12 +114,18 @@ export function App() {
         version: 1,
         comments: comments.comments.map((c) =>
           c.id === threadId
-            ? { ...c, thread: [...c.thread, { id: `m_${Date.now().toString(36)}`, at: new Date().toISOString(), text }] }
+            ? {
+                ...c,
+                thread: [
+                  ...c.thread,
+                  { id: `m_${Date.now().toString(36)}`, at: new Date().toISOString(), text, author: identity || undefined },
+                ],
+              }
             : c
         ),
       })
     },
-    [comments, persistComments]
+    [comments, persistComments, identity]
   )
 
   const handleToggleResolve = useCallback(
@@ -284,6 +306,17 @@ export function App() {
             {m.contest} {m.year}
           </strong>
           <span className="meta">Problem {m.problem} · Team {m.teamControlNumber}</span>
+          <IdentityPicker
+            members={m.members ?? []}
+            identity={identity}
+            onIdentityChange={changeIdentity}
+            onAddMember={(name) =>
+              guard(async () => {
+                await api.patchProject({ members: [...(m.members ?? []), name] })
+                await reload()
+              })
+            }
+          />
         </div>
         <div className="header-right">
           {actionError && <span className="action-error">{actionError}</span>}
@@ -330,20 +363,58 @@ export function App() {
         />
         <main className="app-main">
           {active && active.file ? (
-            <Editor
-              key={`${active.id}:${restoreVersion}`}
-              sectionId={active.id}
-              initialMd={getMd(active.id)}
-              editable
-              numbering={numbering}
-              onChangeMd={(md) => handleSectionChange(active.id, md)}
-              onReady={(editor) => {
-                editorRef.current = editor
-                setHasSelection(false)
-              }}
-              onSelectionChange={setHasSelection}
-              onCreateComment={handleCreateComment}
-            />
+            <>
+              <SectionBar
+                section={active}
+                members={m.members ?? []}
+                identity={identity}
+                onChangeMeta={(patch) =>
+                  guard(async () => {
+                    await api.patchSectionMeta(active.id, patch)
+                    await reload()
+                  })
+                }
+              />
+              {saveStates[active.id] === 'conflict' && (
+                <div className="conflict-banner">
+                  <span>⚠ 该章节已被他人修改，你的保存被拦下。</span>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() =>
+                      guard(async () => {
+                        await resolveConflict(active.id, 'reload')
+                        setRestoreVersion((n) => n + 1)
+                        recomputeNumbering()
+                      })
+                    }
+                  >
+                    加载最新（丢弃我的修改）
+                  </button>
+                  <button
+                    type="button"
+                    className="btn danger"
+                    onClick={() => guard(() => resolveConflict(active.id, 'overwrite'))}
+                  >
+                    强制覆盖
+                  </button>
+                </div>
+              )}
+              <Editor
+                key={`${active.id}:${restoreVersion}`}
+                sectionId={active.id}
+                initialMd={getMd(active.id)}
+                editable
+                numbering={numbering}
+                onChangeMd={(md) => handleSectionChange(active.id, md)}
+                onReady={(editor) => {
+                  editorRef.current = editor
+                  setHasSelection(false)
+                }}
+                onSelectionChange={setHasSelection}
+                onCreateComment={handleCreateComment}
+              />
+            </>
           ) : active?.role === 'references' ? (
             <ReferencesPanel references={references} onChanged={setReferences} />
           ) : (
@@ -365,6 +436,7 @@ export function App() {
                 activeSection={
                   active && active.file ? { id: active.id, file: active.file, title: active.title } : null
                 }
+                identity={identity}
                 beforeRestore={discardPending}
                 onRestored={() => {
                   void reload().then(() => {

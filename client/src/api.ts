@@ -39,8 +39,13 @@ export const api = {
   patchProject: (patch: Record<string, unknown>) =>
     request<{ manifest: PaperManifest }>('/api/project', jsonInit('PATCH', patch)),
 
-  saveSection: (id: string, md: string) =>
-    request<{ section: SectionContent }>(`/api/sections/${encodeURIComponent(id)}`, jsonInit('PUT', { md })),
+  saveSection: (id: string, md: string, baseHash?: string, force?: boolean) =>
+    request<{ section: SectionContent }>(
+      `/api/sections/${encodeURIComponent(id)}`,
+      jsonInit('PUT', { md, baseHash, force })
+    ),
+  patchSectionMeta: (id: string, patch: { owner?: string | null; status?: string }) =>
+    request<{ meta: unknown }>(`/api/sections/${encodeURIComponent(id)}/meta`, jsonInit('PATCH', patch)),
   createSection: (title: string, afterId?: string) =>
     request<{ manifest: PaperManifest; section: SectionContent }>('/api/sections', jsonInit('POST', { title, afterId })),
   deleteSection: (id: string) =>

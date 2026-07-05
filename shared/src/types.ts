@@ -3,11 +3,17 @@
 
 export type SectionRole = 'summary' | 'body' | 'appendix' | 'references' | 'ai-report'
 
+/** 章节写作状态：沟通信号而非权限锁 */
+export type SectionStatus = 'draft' | 'review' | 'done'
+
 export interface SectionMeta {
   id: string
   /** 相对论文目录的 md 文件路径；references 角色为 null（由 references.json 生成） */
   file: string | null
   role: SectionRole
+  /** 负责人（members 中的名字） */
+  owner?: string | null
+  status?: SectionStatus
 }
 
 export interface PaperExportConfig {
@@ -31,6 +37,8 @@ export interface PaperManifest {
   title?: string
   /** 关键词（summary 内容之后的 Keywords 行） */
   keywords?: string[]
+  /** 团队成员名单（分工/评论署名用，无鉴权） */
+  members?: string[]
   sections: SectionMeta[]
   bibliography: string
   export: PaperExportConfig
@@ -43,6 +51,10 @@ export interface SectionContent {
   md: string
   /** 从 md 首个一级标题推导 */
   title: string
+  owner?: string | null
+  status?: SectionStatus
+  /** 磁盘内容哈希（并发保存冲突检测的基准） */
+  hash: string
 }
 
 export interface ProjectSnapshot {

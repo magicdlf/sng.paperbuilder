@@ -9,12 +9,14 @@ const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 interface HistoryPanelProps {
   /** 当前章节（限定 diff / 恢复范围）；null = 全项目 */
   activeSection: { id: string; file: string; title: string } | null
+  /** 当前身份：提交说明自动加 [名字] 前缀 */
+  identity: string
   /** 恢复前调用：丢弃该章节尚未落盘的编辑 */
   beforeRestore: (sectionId: string) => void
   onRestored: () => void
 }
 
-export function HistoryPanel({ activeSection, beforeRestore, onRestored }: HistoryPanelProps) {
+export function HistoryPanel({ activeSection, identity, beforeRestore, onRestored }: HistoryPanelProps) {
   const [status, setStatus] = useState<GitStatusResult | null>(null)
   const [entries, setEntries] = useState<GitLogEntry[]>([])
   const [message, setMessage] = useState('')
@@ -47,7 +49,7 @@ export function HistoryPanel({ activeSection, beforeRestore, onRestored }: Histo
     setBusy(true)
     try {
       setError(null)
-      const res = await api.gitCommit(msg)
+      const res = await api.gitCommit(identity ? `[${identity}] ${msg}` : msg)
       if (!res.committed) setError('没有需要提交的更改')
       else setMessage('')
       await refresh()

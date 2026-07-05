@@ -10,7 +10,14 @@ import type {
   SectionContent,
   SectionMeta,
   SectionRole,
+  SectionStatus,
 } from '@himcm/shared'
+
+const STATUSES: SectionStatus[] = ['draft', 'review', 'done']
+
+function contentHash(md: string): string {
+  return crypto.createHash('sha1').update(md, 'utf8').digest('hex').slice(0, 16)
+}
 
 const ROLES: SectionRole[] = ['summary', 'body', 'appendix', 'references', 'ai-report']
 
@@ -128,6 +135,9 @@ export class ProjectStore {
       file: meta.file,
       md,
       title: titleFromMd(md) ?? meta.id,
+      owner: meta.owner ?? null,
+      status: meta.status ?? 'draft',
+      hash: contentHash(md),
     }
   }
 
@@ -137,12 +147,43 @@ export class ProjectStore {
     return { paperDir: this.paperDir, manifest, sections }
   }
 
-  async writeSection(id: string, md: string): Promise<SectionContent> {
+  /**
+   * 保存章节。带 baseHash 时做乐观并发检测：磁盘内容已被他人改动（哈希
+   * 不匹配）则抛 409，客户端决定“加载最新”或“强制覆盖”（force）。
+   */
+  async writeSection(id: string, md: string, baseHash?: string, force = false): Promise<SectionContent> {
     const manifest = await this.loadManifest()
     const meta = this.sectionMeta(manifest, id)
     if (!meta.file) throw new HttpError(400, `章节 ${id} 没有可写文件（自动生成的章节）`)
-    await writeFileAtomic(path.join(this.paperDir, meta.file), md)
+    const abs = path.join(this.paperDir, meta.file)
+    if (baseHash && !force) {
+      let current = ''
+      try {
+        current = await fs.readFile(abs, 'utf8')
+      } catch {
+        /* 文件尚不存在，视为可写 */
+      }
+      if (current && contentHash(current) !== baseHash) {
+        throw new HttpError(409, '该章节已被他人修改')
+      }
+    }
+    await writeFileAtomic(abs, md)
     return this.readSectionContent(meta)
+  }
+
+  async updateSectionMeta(
+    id: string,
+    patch: { owner?: string | null; status?: SectionStatus }
+  ): Promise<SectionMeta> {
+    const manifest = await this.loadManifest()
+    const meta = this.sectionMeta(manifest, id)
+    if (patch.owner !== undefined) meta.owner = patch.owner === null ? null : String(patch.owner)
+    if (patch.status !== undefined) {
+      if (!STATUSES.includes(patch.status)) throw new HttpError(400, `未知状态: ${patch.status}`)
+      meta.status = patch.status
+    }
+    await this.saveManifest(manifest)
+    return meta
   }
 
   async createSection(title: string, afterId?: string): Promise<{ manifest: PaperManifest; section: SectionContent }> {
@@ -195,6 +236,7 @@ export class ProjectStore {
     contest?: string
     title?: string
     keywords?: string[]
+    members?: string[]
     export?: Partial<PaperManifest['export']>
     order?: string[]
   }): Promise<PaperManifest> {
@@ -206,6 +248,10 @@ export class ProjectStore {
     if (patch.keywords !== undefined) {
       if (!Array.isArray(patch.keywords)) throw new HttpError(400, 'keywords 必须是数组')
       manifest.keywords = patch.keywords.map(String)
+    }
+    if (patch.members !== undefined) {
+      if (!Array.isArray(patch.members)) throw new HttpError(400, 'members 必须是数组')
+      manifest.members = [...new Set(patch.members.map((m) => String(m).trim()).filter(Boolean))]
     }
     if (patch.year !== undefined) {
       const y = Number(patch.year)

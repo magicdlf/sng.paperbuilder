@@ -52,10 +52,16 @@ export function apiRoutes(ctx: ApiContext): Hono {
   })
 
   api.put('/sections/:id', async (c) => {
-    const body = await c.req.json<{ md?: string }>()
+    const body = await c.req.json<{ md?: string; baseHash?: string; force?: boolean }>()
     if (typeof body.md !== 'string') throw new HttpError(400, '缺少 md 字段')
-    const section = await cur().store.writeSection(c.req.param('id'), body.md)
+    const section = await cur().store.writeSection(c.req.param('id'), body.md, body.baseHash, body.force)
     return c.json({ section })
+  })
+
+  api.patch('/sections/:id/meta', async (c) => {
+    const body = await c.req.json<{ owner?: string | null; status?: 'draft' | 'review' | 'done' }>()
+    const meta = await cur().store.updateSectionMeta(c.req.param('id'), body)
+    return c.json({ meta })
   })
 
   api.delete('/sections/:id', async (c) => {

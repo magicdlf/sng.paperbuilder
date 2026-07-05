@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProjectSnapshot } from '@himcm/shared'
 import { api } from '../api.ts'
 
-export type SaveState = 'saved' | 'dirty' | 'saving' | 'error'
+export type SaveState = 'saved' | 'dirty' | 'saving' | 'error' | 'conflict'
 
 const SAVE_DEBOUNCE_MS = 800
 
@@ -11,6 +11,8 @@ export function useProject() {
   const [loadError, setLoadError] = useState<string | null>(null)
   /** 各章节最新 md（含未保存的本地编辑） */
   const mdRef = useRef(new Map<string, string>())
+  /** 各章节磁盘基准哈希（乐观并发检测） */
+  const hashRef = useRef(new Map<string, string>())
   const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({})
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
 
@@ -24,7 +26,10 @@ export function useProject() {
       for (const s of snap.sections) {
         // 不覆盖有未保存编辑的章节
         const state = saveStatesRef.current[s.id]
-        if (state !== 'dirty' && state !== 'saving') mdRef.current.set(s.id, s.md)
+        if (state !== 'dirty' && state !== 'saving' && state !== 'conflict') {
+          mdRef.current.set(s.id, s.md)
+          hashRef.current.set(s.id, s.hash)
+        }
       }
       setSnapshot(snap)
       setLoadError(null)
@@ -42,7 +47,7 @@ export function useProject() {
   }, [])
 
   const flushSection = useCallback(
-    async (id: string) => {
+    async (id: string, force = false) => {
       const timer = timersRef.current.get(id)
       if (timer) {
         clearTimeout(timer)
@@ -52,7 +57,8 @@ export function useProject() {
       if (md === undefined) return
       setSaveState(id, 'saving')
       try {
-        const { section } = await api.saveSection(id, md)
+        const { section } = await api.saveSection(id, md, hashRef.current.get(id), force)
+        hashRef.current.set(id, section.hash)
         // 若保存期间又有编辑则保持 dirty
         if (mdRef.current.get(id) === md) {
           setSaveState(id, 'saved')
@@ -64,8 +70,10 @@ export function useProject() {
         } else {
           setSaveState(id, 'dirty')
         }
-      } catch {
-        setSaveState(id, 'error')
+      } catch (err) {
+        // 409：他人已改动磁盘内容 → 交给 UI 决定加载最新还是强制覆盖
+        if (err instanceof Error && err.message.includes('已被他人修改')) setSaveState(id, 'conflict')
+        else setSaveState(id, 'error')
       }
     },
     [setSaveState]
@@ -125,5 +133,42 @@ export function useProject() {
     [setSaveState]
   )
 
-  return { snapshot, loadError, reload, updateSection, flushSection, discardPending, getMd, getAllMd, saveStates }
+  // 窗口重获焦点时刷新（多人经局域网共用一个 server 时看到队友的更新）
+  useEffect(() => {
+    const onFocus = () => void reload()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [reload])
+
+  /** 处理保存冲突：加载服务器最新内容（丢弃本地）或强制覆盖 */
+  const resolveConflict = useCallback(
+    async (id: string, action: 'reload' | 'overwrite') => {
+      if (action === 'overwrite') {
+        await flushSection(id, true)
+        return
+      }
+      const snap = await api.project()
+      const section = snap.sections.find((s) => s.id === id)
+      if (section) {
+        mdRef.current.set(id, section.md)
+        hashRef.current.set(id, section.hash)
+      }
+      setSaveState(id, 'saved')
+      setSnapshot(snap)
+    },
+    [flushSection, setSaveState]
+  )
+
+  return {
+    snapshot,
+    loadError,
+    reload,
+    updateSection,
+    flushSection,
+    discardPending,
+    resolveConflict,
+    getMd,
+    getAllMd,
+    saveStates,
+  }
 }

@@ -520,3 +520,133 @@
   font-size: 13px;
   font-family: var(--font-ui);
 }
+
+/* ---- 协作：身份 / 分工条 / 冲突 ---- */
+
+.identity-picker {
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: 12.5px;
+  padding: 0 6px;
+  margin-left: 8px;
+  color: var(--text);
+}
+
+.section-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 5px 16px;
+  background: #fbfaf7;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.section-bar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-bar select {
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: 12px;
+}
+
+.status-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.status-chip.st-draft {
+  background: #efede8;
+  color: var(--text-dim);
+}
+
+.status-chip.st-review {
+  background: #fdf3df;
+  color: var(--warn);
+}
+
+.status-chip.st-done {
+  background: #e9f6ec;
+  color: var(--ok);
+}
+
+.section-bar-hint {
+  color: var(--warn);
+}
+
+.section-bar-warn {
+  color: var(--danger);
+}
+
+.conflict-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: #fdeeea;
+  color: var(--danger);
+  font-size: 13px;
+  border-bottom: 1px solid #eccfc6;
+  flex-shrink: 0;
+}
+
+/* 章节列表徽标 */
+
+.section-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.owner-badge {
+  font-size: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.review {
+  background: var(--warn);
+}
+
+.status-dot.done {
+  background: var(--ok);
+}
+
+.msg-author {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* 章节结构编辑锁 */
+
+.section-list-header .spacer {
+  flex: 1;
+}
+
+.lock-btn.unlocked {
+  background: var(--accent-soft);
+  color: var(--accent);
+}

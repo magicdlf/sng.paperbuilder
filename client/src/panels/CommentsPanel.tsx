@@ -45,6 +45,7 @@ function ThreadCard({
         {thread.thread.map((msg) => (
           <li key={msg.id}>
             <span className="msg-time">
+              {msg.author && <strong className="msg-author">{msg.author} · </strong>}
               {new Date(msg.at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </span>
             <p>{msg.text}</p>

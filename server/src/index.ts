@@ -20,6 +20,8 @@ async function main(): Promise<void> {
     argValue('--papers-root', process.env.HIMCM_PAPERS_ROOT ?? path.join(os.homedir(), 'HiMCMPapers'))
   )
   const port = Number(argValue('--port', process.env.HIMCM_PORT ?? '4870'))
+  // --host 0.0.0.0 开放局域网访问（队友浏览器直连；生产模式 npm start 下前端同端口）
+  const host = argValue('--host', process.env.HIMCM_HOST ?? '127.0.0.1')
   const templateDir = path.resolve(here, '../../template')
 
   const manager = new PaperManager(papersRoot, templateDir)
@@ -38,8 +40,9 @@ async function main(): Promise<void> {
   }
 
   const app = createApp({ manager, clientDist })
-  serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {
-    console.log(`HiMCM server 运行于 http://127.0.0.1:${info.port}`)
+  serve({ fetch: app.fetch, port, hostname: host }, (info) => {
+    console.log(`HiMCM server 运行于 http://${host === '0.0.0.0' ? '<本机局域网IP>' : host}:${info.port}`)
+    if (host === '0.0.0.0') console.log('已开放局域网访问：队友可用你的局域网 IP 直接打开')
   })
 }
 
