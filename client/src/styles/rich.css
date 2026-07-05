@@ -473,3 +473,44 @@
 .figure-view:hover .figure-hover-hint {
   opacity: 1;
 }
+
+/* ---- 图片工具集（重设计） ---- */
+
+.figure-controls {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.figure-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.figure-controls-row.buttons {
+  gap: 6px;
+}
+
+.fig-btn {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.fig-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.fig-btn.danger:hover {
+  background: #fdeeea;
+  color: var(--danger);
+  border-color: var(--danger);
+}
