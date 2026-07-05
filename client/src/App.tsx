@@ -23,6 +23,7 @@ import { HistoryPanel } from './panels/HistoryPanel.tsx'
 import { CommentsPanel } from './panels/CommentsPanel.tsx'
 import { PaperSwitcher } from './panels/PaperSwitcher.tsx'
 import { IdentityPicker, SectionBar } from './panels/TeamBar.tsx'
+import { ReviewDialog, type ReviewDialogState } from './panels/ReviewDialog.tsx'
 
 export function App() {
   const {
@@ -263,26 +264,50 @@ export function App() {
   )
 
   /** 把当前编辑器中 pos 处的图搬到目标章节末尾（文件在论文级 assets/，无需移动） */
-  /** 章节元信息变更；状态切到「待评审」时自动打一个评审检查点提交 */
+  const [reviewDialog, setReviewDialog] = useState<ReviewDialogState | null>(null)
+
+  /**
+   * 章节元信息变更。状态切「待评审」时：
+   * - 有改动 → 弹确认框让用户描述改动（可取消，取消则状态不变）
+   * - 无改动 → 直接改状态，不产生空提交
+   */
   const handleSectionMetaChange = useCallback(
     (sectionId: string, sectionTitle: string, patch: { owner?: string | null; status?: string }) =>
       guard(async () => {
-        if (patch.status === 'review') {
-          // 先把所有未保存内容落盘，检查点才完整
-          for (const s of snapshotRef.current?.sections ?? []) {
-            const st = saveStates[s.id]
-            if (st === 'dirty' || st === 'saving') await flushSection(s.id)
-          }
+        if (patch.status !== 'review') {
+          await api.patchSectionMeta(sectionId, patch)
+          await reload()
+          return
         }
-        await api.patchSectionMeta(sectionId, patch)
-        if (patch.status === 'review') {
-          const msg = `《${sectionTitle}》提交评审`
-          await api.gitCommit(identity ? `[${identity}] ${msg}` : msg).catch(() => undefined)
-          await refreshGit()
+        // 先把所有未保存内容落盘，检查点才完整
+        for (const s of snapshotRef.current?.sections ?? []) {
+          const st = saveStates[s.id]
+          if (st === 'dirty' || st === 'saving') await flushSection(s.id)
         }
+        const gitStatus = await api.gitStatus()
+        if (gitStatus.changedFiles.length === 0) {
+          await api.patchSectionMeta(sectionId, patch)
+          await reload()
+          return
+        }
+        setReviewDialog({ sectionId, sectionTitle, changedFiles: gitStatus.changedFiles })
+      }),
+    [guard, saveStates, flushSection, reload]
+  )
+
+  const confirmReview = useCallback(
+    (description: string) =>
+      guard(async () => {
+        const dialog = reviewDialog
+        if (!dialog) return
+        setReviewDialog(null)
+        const msg = `《${dialog.sectionTitle}》送审${description ? `：${description}` : ''}`
+        await api.gitCommit(identity ? `[${identity}] ${msg}` : msg)
+        await api.patchSectionMeta(dialog.sectionId, { status: 'review' })
+        await refreshGit()
         await reload()
       }),
-    [guard, saveStates, flushSection, identity, reload, refreshGit]
+    [guard, reviewDialog, identity, refreshGit, reload]
   )
 
   // reload 闭包里读取最新 snapshot 用
@@ -521,6 +546,9 @@ export function App() {
             <div className="empty-state">选择左侧章节开始编辑</div>
           )}
         </main>
+        {reviewDialog && (
+          <ReviewDialog state={reviewDialog} onConfirm={confirmReview} onCancel={() => setReviewDialog(null)} />
+        )}
         {panel && (
           <RightPanel tab={panel} onTabChange={setPanel} onClose={() => setPanel(null)}>
             {panel === 'compile' && (
