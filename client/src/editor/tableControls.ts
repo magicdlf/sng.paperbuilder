@@ -40,7 +40,10 @@ function buildDecorations(editor: Editor, doc: PMNode): DecorationSet {
   const decos: Decoration[] = []
   doc.descendants((node, pos) => {
     if (node.type.name !== 'table') return true
-    decos.push(Decoration.widget(pos, () => buildWidget(editor, pos), { side: -1 }))
+    // 只读（浏览模式）不渲染移动控制；列对齐装饰保留（纯显示）
+    if (editor.isEditable) {
+      decos.push(Decoration.widget(pos, () => buildWidget(editor, pos), { side: -1 }))
+    }
 
     // 列对齐所见即所得：把 table.attrs.aligns 实时应用到各单元格
     const aligns = (node.attrs.aligns ?? null) as Array<'left' | 'center' | 'right'> | null

@@ -58,7 +58,7 @@ export function Editor({
 
   const openMathAt = useCallback((info: { pos: number; latex: string; label: string | null; kind: 'inline' | 'block' }) => {
     const editor = editorRef.current
-    if (!editor) return
+    if (!editor || !editor.isEditable) return
     const coords = editor.view.coordsAtPos(info.pos)
     setMathEdit({ ...info, anchor: { left: coords.left, bottom: coords.bottom } })
   }, [])
@@ -199,14 +199,18 @@ export function Editor({
   return (
     <NumberingContext.Provider value={numbering}>
       <div className={`editor-wrap table-style-${tableStyle}`}>
-        <Toolbar
-          editor={editor}
-          onInsertMath={insertMath}
-          onInsertImage={() => fileInputRef.current?.click()}
-          onAddComment={addComment}
-          tableStyle={tableStyle}
-          onToggleTableStyle={toggleTableStyle}
-        />
+        {editable ? (
+          <Toolbar
+            editor={editor}
+            onInsertMath={insertMath}
+            onInsertImage={() => fileInputRef.current?.click()}
+            onAddComment={addComment}
+            tableStyle={tableStyle}
+            onToggleTableStyle={toggleTableStyle}
+          />
+        ) : (
+          <div className="readonly-bar">👁 只读预览——「回到最新」后才能编辑</div>
+        )}
         <input
           ref={fileInputRef}
           type="file"

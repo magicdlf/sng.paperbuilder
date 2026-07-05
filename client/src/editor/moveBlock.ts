@@ -7,6 +7,8 @@ const MOVABLE = new Set(['figure', 'table'])
 
 /** 把 pos 处的块与相邻兄弟交换；成功返回 true */
 export function moveNodeAt(editor: Editor, pos: number, dir: -1 | 1): boolean {
+  // 浏览模式（只读）下命令仍可 dispatch，必须显式拦截
+  if (!editor.isEditable) return false
   const { doc } = editor.state
   const node = doc.nodeAt(pos)
   if (!node) return false

@@ -55,7 +55,12 @@ export function App() {
   }, [])
   useEffect(() => {
     void refreshGit()
-    const onFocus = () => void refreshGit()
+    const onFocus = () => {
+      void refreshGit()
+      // 局域网协作：队友的批注写在共享 server 上，聚焦时拉取（无需任何提交）
+      void api.comments().then(setComments).catch(() => undefined)
+      void api.references().then(setReferences).catch(() => undefined)
+    }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [refreshGit])

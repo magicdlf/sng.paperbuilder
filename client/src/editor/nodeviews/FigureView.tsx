@@ -43,6 +43,8 @@ export function FigureView({ node, selected, editor, getPos, updateAttributes, d
     }
   }
 
+  const readOnly = !editor.isEditable
+
   return (
     <NodeViewWrapper as="figure" className={`figure-view${selected ? ' selected' : ''}`} data-figure="">
       <img
@@ -51,19 +53,23 @@ export function FigureView({ node, selected, editor, getPos, updateAttributes, d
         style={{ width: `${width}%` }}
         draggable={false}
         data-drag-handle=""
-        onMouseDown={(e) => {
-          // 抢在 PM 把光标放进题注之前选中整个节点
-          e.preventDefault()
-          selectSelf()
-        }}
-        onClick={selectSelf}
+        onMouseDown={
+          readOnly
+            ? undefined
+            : (e) => {
+                // 抢在 PM 把光标放进题注之前选中整个节点
+                e.preventDefault()
+                selectSelf()
+              }
+        }
+        onClick={readOnly ? undefined : selectSelf}
       />
-      {!selected && (
+      {!selected && !readOnly && (
         <div className="figure-hover-hint" contentEditable={false}>
           点击图片打开工具集
         </div>
       )}
-      {selected && (
+      {selected && !readOnly && (
         <div className="figure-controls" contentEditable={false}>
           <div className="figure-controls-row buttons">
             <button type="button" className="fig-btn" title="Alt+↑" onClick={() => move(-1)}>

@@ -314,3 +314,14 @@
 .tiptap.ProseMirror-focused .ProseMirror-gapcursor {
   display: block;
 }
+
+/* 只读预览条（浏览历史版本时替代工具栏） */
+
+.readonly-bar {
+  padding: 8px 16px;
+  background: #eef2fb;
+  color: #35507e;
+  font-size: 13px;
+  border-bottom: 1px solid #d5ddf0;
+  flex-shrink: 0;
+}
