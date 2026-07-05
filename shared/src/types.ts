@@ -43,6 +43,15 @@ export interface ProjectSnapshot {
   sections: SectionContent[]
 }
 
+export interface PaperListItem {
+  dir: string
+  name: string
+  contest: string
+  year: number
+  problem: string
+  current: boolean
+}
+
 // ---- git ----
 
 export interface GitLogEntry {

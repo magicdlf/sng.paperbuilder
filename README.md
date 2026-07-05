@@ -4,7 +4,8 @@
 
 ## 功能
 
-- **所见即所得编辑**：标题/列表/引用块/代码块、行内与块级公式（LaTeX 源码 + KaTeX 实时预览）、三线表、图片（粘贴/拖放自动入库）
+- **所见即所得编辑**：标题/列表/引用块/代码块、行内与块级公式（LaTeX 源码 + KaTeX 实时预览）、三线表、图片（粘贴/拖放自动入库）；图/表可用控制条 ↑↓ 或 `Alt+↑/↓` 整块移动
+- **多论文管理**：顶栏切换器列出 `~/HiMCMPapers` 下所有论文，一键新建/切换/打开任意路径；重启自动回到上次打开的论文
 - **实时编号**：Figure/Table/Equation 编号在编辑器内实时显示，与最终 PDF 完全一致（同一套计数逻辑）
 - **交叉引用**：`[@fig:x]` / `[@tbl:x]` / `[@eq:x]` / `[@sec:x]` chip 实时解析，导出为 cleveref `\Cref`
 - **参考文献**：`references.json` 管理 + 正文 `[@key]` 引用，导出自动生成 References（无需 BibTeX）
@@ -23,8 +24,9 @@
 
 ```bash
 npm install
-npm run dev -- --paper ~/HiMCMPapers/2026     # 目录不存在则自动脚手架 + git init
-# 浏览器打开 http://localhost:5173
+npm run dev                                   # 打开上次的论文（首次为 ~/HiMCMPapers/demo）
+# 浏览器打开 http://localhost:5173 ；顶栏 📄 菜单可新建/切换论文
+npm run dev -- --paper /path/to/paper         # 也可显式指定论文目录
 ```
 
 生产模式（单端口、无 vite）：

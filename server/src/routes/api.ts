@@ -1,29 +1,43 @@
 import { Hono } from 'hono'
 import type { CommentsFile, ReferencesFile } from '@himcm/shared'
-import { HttpError, type ProjectStore } from '../services/projectStore.ts'
-import type { GitService } from '../services/gitService.ts'
-import type { LatexService } from '../services/latexService.ts'
+import { HttpError } from '../services/projectStore.ts'
+import type { PaperManager } from '../services/paperManager.ts'
 
 export interface ApiContext {
-  store: ProjectStore
-  git: GitService
-  latex: LatexService
+  manager: PaperManager
 }
 
 export function apiRoutes(ctx: ApiContext): Hono {
   const api = new Hono()
-  const { store, git, latex } = ctx
+  // 当前论文可被切换，必须每次请求时取，不可解构缓存
+  const cur = () => ctx.manager.current
+
+  // ---- 论文管理 ----
+
+  api.get('/papers', async (c) =>
+    c.json({ papersRoot: ctx.manager.papersRoot, current: cur().dir, papers: await ctx.manager.list() })
+  )
+
+  api.post('/papers', async (c) => {
+    const body = await c.req.json<{ name?: string }>()
+    const paper = await ctx.manager.create(body.name ?? '')
+    return c.json({ dir: paper.dir })
+  })
+
+  api.post('/papers/open', async (c) => {
+    const body = await c.req.json<{ dir?: string }>()
+    if (!body.dir) throw new HttpError(400, '需要 dir 参数')
+    const paper = await ctx.manager.open(body.dir)
+    return c.json({ dir: paper.dir })
+  })
 
   // ---- 项目 ----
 
-  api.get('/project', async (c) => {
-    const snapshot = await store.snapshot()
-    return c.json(snapshot)
-  })
+  api.get('/project', async (c) => c.json(await cur().store.snapshot()))
 
   api.patch('/project', async (c) => {
     const patch = await c.req.json()
-    const manifest = await store.updateProject(patch)
+    const manifest = await cur().store.updateProject(patch)
     return c.json({ manifest })
   })
 
@@ -33,19 +47,19 @@ export function apiRoutes(ctx: ApiContext): Hono {
     const body = await c.req.json<{ title?: string; afterId?: string }>()
     const title = (body.title ?? '').trim()
     if (!title) throw new HttpError(400, '标题不能为空')
-    const result = await store.createSection(title, body.afterId)
+    const result = await cur().store.createSection(title, body.afterId)
     return c.json(result)
   })
 
   api.put('/sections/:id', async (c) => {
     const body = await c.req.json<{ md?: string }>()
     if (typeof body.md !== 'string') throw new HttpError(400, '缺少 md 字段')
-    const section = await store.writeSection(c.req.param('id'), body.md)
+    const section = await cur().store.writeSection(c.req.param('id'), body.md)
     return c.json({ section })
   })
 
   api.delete('/sections/:id', async (c) => {
-    const manifest = await store.deleteSection(c.req.param('id'))
+    const manifest = await cur().store.deleteSection(c.req.param('id'))
     return c.json({ manifest })
   })
 
@@ -57,37 +71,37 @@ export function apiRoutes(ctx: ApiContext): Hono {
     if (!(file instanceof File)) throw new HttpError(400, '缺少文件字段 file')
     const buf = new Uint8Array(await file.arrayBuffer())
     if (buf.byteLength > 20 * 1024 * 1024) throw new HttpError(400, '文件超过 20MB')
-    const rel = await store.saveAsset(file.name || 'image.png', buf)
+    const rel = await cur().store.saveAsset(file.name || 'image.png', buf)
     return c.json({ path: rel })
   })
 
   // ---- 批注 & 参考文献 ----
 
-  api.get('/comments', async (c) => c.json(await store.loadComments()))
+  api.get('/comments', async (c) => c.json(await cur().store.loadComments()))
   api.put('/comments', async (c) => {
     const body = await c.req.json<CommentsFile>()
-    await store.saveComments(body)
+    await cur().store.saveComments(body)
     return c.json({ ok: true })
   })
 
-  api.get('/references', async (c) => c.json(await store.loadReferences()))
+  api.get('/references', async (c) => c.json(await cur().store.loadReferences()))
   api.put('/references', async (c) => {
     const body = await c.req.json<ReferencesFile>()
-    await store.saveReferences(body)
+    await cur().store.saveReferences(body)
     return c.json({ ok: true })
   })
 
   // ---- git ----
 
-  api.get('/git/status', async (c) => c.json(await git.status()))
+  api.get('/git/status', async (c) => c.json(await cur().git.status()))
 
   api.get('/git/log', async (c) => {
     const file = c.req.query('file') || undefined
-    return c.json({ entries: await git.log(file) })
+    return c.json({ entries: await cur().git.log(file) })
   })
 
   api.get('/git/diff', async (c) => {
-    const diff = await git.diff(
+    const diff = await cur().git.diff(
       c.req.query('from') || undefined,
       c.req.query('to') || undefined,
       c.req.query('file') || undefined
@@ -99,20 +113,20 @@ export function apiRoutes(ctx: ApiContext): Hono {
     const rev = c.req.query('rev')
     const file = c.req.query('file')
     if (!rev || !file) throw new HttpError(400, '需要 rev 与 file 参数')
-    return c.json({ content: await git.showFile(rev, file) })
+    return c.json({ content: await cur().git.showFile(rev, file) })
   })
 
   api.post('/git/commit', async (c) => {
     const body = await c.req.json<{ message?: string }>()
     const message = (body.message ?? '').trim()
     if (!message) throw new HttpError(400, '提交说明不能为空')
-    return c.json(await git.commitAll(message))
+    return c.json(await cur().git.commitAll(message))
   })
 
   api.post('/git/restore', async (c) => {
     const body = await c.req.json<{ rev?: string; file?: string }>()
     if (!body.rev || !body.file) throw new HttpError(400, '需要 rev 与 file')
-    await git.restoreFile(body.rev, body.file)
+    await cur().git.restoreFile(body.rev, body.file)
     return c.json({ ok: true })
   })
 
@@ -121,9 +135,9 @@ export function apiRoutes(ctx: ApiContext): Hono {
   api.post('/export', async (c) => {
     const body = await c.req.json<{ compile?: boolean }>().catch(() => ({ compile: false }))
     if (body.compile) {
-      return c.json(await latex.compile())
+      return c.json(await cur().latex.compile())
     }
-    const { texPath, warnings } = await latex.exportTex()
+    const { texPath, warnings } = await cur().latex.exportTex()
     return c.json({ texPath, warnings })
   })
 

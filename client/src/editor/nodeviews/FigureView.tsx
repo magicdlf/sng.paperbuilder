@@ -1,9 +1,15 @@
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
+import { moveNodeAt } from '../moveBlock.ts'
 
-/** 图节点视图：图片 + 选中时的宽度/label 控制条 + 可编辑题注 */
-export function FigureView({ node, selected, updateAttributes, deleteNode }: NodeViewProps) {
+/** 图节点视图：图片 + 选中时的宽度/label/移动控制条 + 可编辑题注 */
+export function FigureView({ node, selected, editor, getPos, updateAttributes, deleteNode }: NodeViewProps) {
   const width = (node.attrs.width as number | null) ?? 70
   const label = (node.attrs.label as string | null) ?? ''
+
+  const move = (dir: -1 | 1) => {
+    const pos = getPos()
+    if (pos !== undefined) moveNodeAt(editor, pos, dir)
+  }
 
   return (
     <NodeViewWrapper as="figure" className={`figure-view${selected ? ' selected' : ''}`} data-figure="">
@@ -31,6 +37,12 @@ export function FigureView({ node, selected, updateAttributes, deleteNode }: Nod
               onChange={(e) => updateAttributes({ label: e.target.value.trim() || null })}
             />
           </label>
+          <button type="button" className="icon-btn" title="上移（Alt+↑）" onClick={() => move(-1)}>
+            ↑
+          </button>
+          <button type="button" className="icon-btn" title="下移（Alt+↓）" onClick={() => move(1)}>
+            ↓
+          </button>
           <button type="button" className="icon-btn danger" title="删除图" onClick={() => deleteNode()}>
             🗑
           </button>

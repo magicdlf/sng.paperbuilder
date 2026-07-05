@@ -18,6 +18,7 @@ import { CompilePanel } from './panels/CompilePanel.tsx'
 import { ReferencesPanel } from './panels/ReferencesPanel.tsx'
 import { HistoryPanel } from './panels/HistoryPanel.tsx'
 import { CommentsPanel } from './panels/CommentsPanel.tsx'
+import { PaperSwitcher } from './panels/PaperSwitcher.tsx'
 
 export function App() {
   const { snapshot, loadError, reload, updateSection, flushSection, discardPending, getMd, getAllMd, saveStates } =
@@ -257,6 +258,7 @@ export function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-title">
+          <PaperSwitcher currentDir={snapshot.paperDir} />
           <strong>
             {m.contest} {m.year}
           </strong>

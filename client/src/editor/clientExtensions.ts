@@ -8,6 +8,7 @@ import { FigureView } from './nodeviews/FigureView.tsx'
 import { CrossRefChip } from './nodeviews/CrossRefChip.tsx'
 import { CitationChip } from './nodeviews/CitationChip.tsx'
 import { NumberingExtension } from './numberingPlugin.ts'
+import { moveBlock } from './moveBlock.ts'
 
 export interface MathClickHandler {
   (info: { pos: number; latex: string; label: string | null; kind: 'inline' | 'block' }): void
@@ -38,6 +39,17 @@ const MergeBlocker = Extension.create({
         },
       }),
     ]
+  },
+})
+
+/** Alt+↑/↓ 移动图/表（选区不在可移动块内时放行默认行为） */
+const MoveBlockKeys = Extension.create({
+  name: 'moveBlockKeys',
+  addKeyboardShortcuts() {
+    return {
+      'Alt-ArrowUp': ({ editor }) => moveBlock(editor, -1),
+      'Alt-ArrowDown': ({ editor }) => moveBlock(editor, 1),
+    }
   },
 })
 
@@ -104,5 +116,6 @@ export function clientExtensions(onMathClick: MathClickHandler): AnyExtension[] 
     }),
     MergeBlocker,
     NumberingExtension,
+    MoveBlockKeys,
   ]
 }

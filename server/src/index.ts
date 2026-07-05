@@ -1,10 +1,9 @@
 import path from 'node:path'
+import os from 'node:os'
 import { promises as fs } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
-import { ProjectStore } from './services/projectStore.ts'
-import { GitService } from './services/gitService.ts'
-import { LatexService } from './services/latexService.ts'
+import { PaperManager } from './services/paperManager.ts'
 import { createApp } from './app.ts'
 
 function argValue(name: string, fallback: string): string {
@@ -16,21 +15,16 @@ function argValue(name: string, fallback: string): string {
 const here = path.dirname(fileURLToPath(import.meta.url))
 
 async function main(): Promise<void> {
-  const paperDir = path.resolve(argValue('--paper', process.env.HIMCM_PAPER ?? './paper'))
+  const explicitPaper = argValue('--paper', process.env.HIMCM_PAPER ?? '') || null
+  const papersRoot = path.resolve(
+    argValue('--papers-root', process.env.HIMCM_PAPERS_ROOT ?? path.join(os.homedir(), 'HiMCMPapers'))
+  )
   const port = Number(argValue('--port', process.env.HIMCM_PORT ?? '4870'))
   const templateDir = path.resolve(here, '../../template')
 
-  const store = new ProjectStore(paperDir)
-  const created = await store.ensure(templateDir)
-
-  const git = new GitService(paperDir)
-  await git.ensureRepo()
-  if (created === 'created') {
-    await git.commitAll('初始化论文')
-    console.log(`已创建新论文: ${paperDir}（git 已初始化并完成首次提交）`)
-  } else {
-    console.log(`已打开论文: ${paperDir}`)
-  }
+  const manager = new PaperManager(papersRoot, templateDir)
+  await manager.initial(explicitPaper ? path.resolve(explicitPaper) : null)
+  console.log(`论文根目录: ${papersRoot}`)
 
   let clientDist: string | null = null
   if (process.env.NODE_ENV === 'production') {
@@ -43,8 +37,7 @@ async function main(): Promise<void> {
     }
   }
 
-  const latex = new LatexService(store)
-  const app = createApp({ store, git, latex, clientDist })
+  const app = createApp({ manager, clientDist })
   serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {
     console.log(`HiMCM server 运行于 http://127.0.0.1:${info.port}`)
   })

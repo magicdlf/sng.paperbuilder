@@ -1,9 +1,8 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { Hono } from 'hono'
-import { HttpError, type ProjectStore } from './services/projectStore.ts'
-import type { GitService } from './services/gitService.ts'
-import type { LatexService } from './services/latexService.ts'
+import { HttpError } from './services/projectStore.ts'
+import type { PaperManager } from './services/paperManager.ts'
 import { apiRoutes } from './routes/api.ts'
 
 const MIME: Record<string, string> = {
@@ -34,9 +33,7 @@ async function serveFile(absPath: string, extraHeaders: Record<string, string> =
 }
 
 export interface AppContext {
-  store: ProjectStore
-  git: GitService
-  latex: LatexService
+  manager: PaperManager
   /** 生产模式下 client/dist 的路径；dev 模式为 null（由 vite 托管前端） */
   clientDist: string | null
 }
@@ -54,7 +51,7 @@ export function createApp(ctx: AppContext): Hono {
   // 论文图片资源（防目录穿越）
   app.get('/assets/*', async (c) => {
     const rel = decodeURIComponent(c.req.path.replace(/^\/assets\//, ''))
-    const root = path.join(ctx.store.paperDir, 'assets')
+    const root = path.join(ctx.manager.current.store.paperDir, 'assets')
     const abs = path.resolve(root, rel)
     if (!abs.startsWith(root + path.sep)) return c.json({ error: '路径不合法' }, 400)
     const res = await serveFile(abs)
@@ -63,7 +60,7 @@ export function createApp(ctx: AppContext): Hono {
 
   // 编译出的 PDF（M3 起可用）
   app.get('/pdf', async (c) => {
-    const abs = path.join(ctx.store.paperDir, 'build', 'paper.pdf')
+    const abs = path.join(ctx.manager.current.store.paperDir, 'build', 'paper.pdf')
     const res = await serveFile(abs, { 'cache-control': 'no-store' })
     return res ?? c.json({ error: 'PDF 尚未编译' }, 404)
   })

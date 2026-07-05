@@ -4,7 +4,6 @@
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import os from 'node:os'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
@@ -15,9 +14,8 @@ function argValue(name, fallback) {
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback
 }
 
-const paperDir = path.resolve(
-  argValue('--paper', process.env.HIMCM_PAPER || path.join(os.homedir(), 'HiMCMPapers', 'demo'))
-)
+// --paper 不给时由 server 决定（上次打开的论文，或 ~/HiMCMPapers/demo）
+const paperDir = argValue('--paper', process.env.HIMCM_PAPER || '')
 const port = argValue('--port', process.env.HIMCM_PORT || '4870')
 
 const bin = (name) => path.join(root, 'node_modules', '.bin', name)
@@ -56,11 +54,12 @@ function shutdown() {
 process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
 
-console.log(`论文目录: ${paperDir}`)
+const serverArgs = ['src/index.ts', '--port', port]
+if (paperDir) serverArgs.push('--paper', path.resolve(paperDir))
 run(
   'server',
   bin('tsx'),
-  prod ? ['src/index.ts', '--paper', paperDir, '--port', port] : ['watch', 'src/index.ts', '--paper', paperDir, '--port', port],
+  prod ? serverArgs : ['watch', ...serverArgs],
   path.join(root, 'server'),
   prod ? { NODE_ENV: 'production' } : {}
 )

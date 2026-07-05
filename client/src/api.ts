@@ -4,6 +4,7 @@ import type {
   GitCommitResult,
   GitLogEntry,
   GitStatusResult,
+  PaperListItem,
   PaperManifest,
   ProjectSnapshot,
   ReferencesFile,
@@ -75,4 +76,8 @@ export const api = {
 
   compile: () => request<CompileResult>('/api/export', jsonInit('POST', { compile: true })),
   exportTex: () => request<{ texPath: string; warnings: string[] }>('/api/export', jsonInit('POST', { compile: false })),
+
+  papers: () => request<{ papersRoot: string; current: string; papers: PaperListItem[] }>('/api/papers'),
+  createPaper: (name: string) => request<{ dir: string }>('/api/papers', jsonInit('POST', { name })),
+  openPaper: (dir: string) => request<{ dir: string }>('/api/papers/open', jsonInit('POST', { dir })),
 }
