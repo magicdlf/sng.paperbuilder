@@ -3,6 +3,7 @@ import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/re
 import { moveNodeAt } from '../moveBlock.ts'
 import { useNumbering } from '../NumberingContext.ts'
 import { api } from '../../api.ts'
+import { shortcut } from '../../shortcuts.ts'
 
 /** 图节点视图：图片 + 选中时的工具集（移动/替换/删除 + 宽度/标号）+ 可编辑题注 */
 export function FigureView({ node, selected, editor, getPos, updateAttributes, deleteNode }: NodeViewProps) {
@@ -72,10 +73,10 @@ export function FigureView({ node, selected, editor, getPos, updateAttributes, d
       {selected && !readOnly && (
         <div className="figure-controls" contentEditable={false}>
           <div className="figure-controls-row buttons">
-            <button type="button" className="fig-btn" title="Alt+↑" onClick={() => move(-1)}>
+            <button type="button" className="fig-btn" title={shortcut('↑', 'alt')} onClick={() => move(-1)}>
               ↑ 上移
             </button>
-            <button type="button" className="fig-btn" title="Alt+↓" onClick={() => move(1)}>
+            <button type="button" className="fig-btn" title={shortcut('↓', 'alt')} onClick={() => move(1)}>
               ↓ 下移
             </button>
             <button
@@ -98,7 +99,7 @@ export function FigureView({ node, selected, editor, getPos, updateAttributes, d
               <select
                 className="fig-btn fig-select"
                 value=""
-                title="把图搬到其它章节末尾（也可 ⌘X 剪切后到目标位置 ⌘V 粘贴）"
+                title={`把图搬到其它章节末尾（也可 ${shortcut('X')} 剪切后到目标位置 ${shortcut('V')} 粘贴）`}
                 onChange={(e) => {
                   const target = e.target.value
                   const pos = getPos()

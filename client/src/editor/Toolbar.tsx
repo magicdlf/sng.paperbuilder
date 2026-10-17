@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Editor } from '@tiptap/core'
 import { useEditorState } from '@tiptap/react'
 import { RefPicker, TableSettings, Dropdown } from './InsertMenus.tsx'
+import { shortcut } from '../shortcuts.ts'
 
 interface ToolbarProps {
   editor: Editor
@@ -80,7 +81,7 @@ function CommentDialog({ onSubmit, onClose }: { onSubmit: (text: string) => void
         <textarea
           autoFocus
           rows={3}
-          placeholder="批注内容…（⌘Enter 保存）"
+          placeholder={`批注内容…（${shortcut('Enter')} 保存）`}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -139,8 +140,8 @@ export function Toolbar({
 
   return (
     <div className="toolbar">
-      <Btn label="↺" title="撤销 (⌘Z)" disabled={!s.canUndo} onClick={() => chain().undo().run()} />
-      <Btn label="↻" title="重做 (⌘⇧Z)" disabled={!s.canRedo} onClick={() => chain().redo().run()} />
+      <Btn label="↺" title={`撤销 (${shortcut('Z')})`} disabled={!s.canUndo} onClick={() => chain().undo().run()} />
+      <Btn label="↻" title={`重做 (${shortcut('Shift+Z')})`} disabled={!s.canRedo} onClick={() => chain().redo().run()} />
       <span className="tb-sep" />
       <select
         className="tb-select"
@@ -161,9 +162,9 @@ export function Toolbar({
         <Btn label="#⃞" title="标题标号（交叉引用用）" onClick={() => setMenu(menu === 'headingLabel' ? null : 'headingLabel')} />
       )}
       <span className="tb-sep" />
-      <Btn label="B" title="加粗 (⌘B)" active={s.bold} onClick={() => chain().toggleBold().run()} />
-      <Btn label="I" title="斜体 (⌘I)" active={s.italic} onClick={() => chain().toggleItalic().run()} />
-      <Btn label="U" title="下划线 (⌘U)" active={s.underline} onClick={() => chain().toggleUnderline().run()} />
+      <Btn label="B" title={`加粗 (${shortcut('B')})`} active={s.bold} onClick={() => chain().toggleBold().run()} />
+      <Btn label="I" title={`斜体 (${shortcut('I')})`} active={s.italic} onClick={() => chain().toggleItalic().run()} />
+      <Btn label="U" title={`下划线 (${shortcut('U')})`} active={s.underline} onClick={() => chain().toggleUnderline().run()} />
       <Btn label="S" title="删除线" active={s.strike} onClick={() => chain().toggleStrike().run()} />
       <Btn label="⌜⌟" title="行内代码" active={s.code} onClick={() => chain().toggleCode().run()} />
       <span className="tb-sep" />

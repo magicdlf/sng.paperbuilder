@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { shortcut } from '../shortcuts.ts'
 
 export interface ReviewDialogState {
   sectionId: string
@@ -49,7 +50,7 @@ export function ReviewDialog({
           <button type="button" className="btn" onClick={onCancel}>
             取消（不送审）
           </button>
-          <button type="button" className="btn primary" title="⌘Enter" onClick={() => onConfirm(text.trim())}>
+          <button type="button" className="btn primary" title={shortcut('Enter')} onClick={() => onConfirm(text.trim())}>
             提交并送审
           </button>
         </div>

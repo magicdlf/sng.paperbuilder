@@ -6,6 +6,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import type { Editor } from '@tiptap/core'
 import { moveNodeAt } from './moveBlock.ts'
+import { shortcut } from '../shortcuts.ts'
 
 const key = new PluginKey('tableHoverControls')
 
@@ -25,11 +26,11 @@ function buildWidget(editor: Editor, pos: number): HTMLElement {
     b.addEventListener('click', () => moveNodeAt(editor, pos, dir))
     return b
   }
-  inner.append(mkBtn('↑', '上移表格（Alt+↑）', -1), mkBtn('↓', '下移表格（Alt+↓）', 1))
+  inner.append(mkBtn('↑', `上移表格（${shortcut('↑', 'alt')}）`, -1), mkBtn('↓', `下移表格（${shortcut('↓', 'alt')}）`, 1))
 
   const hint = document.createElement('span')
   hint.className = 'hint'
-  hint.textContent = 'Alt+↑/↓ 移动 · 题注在工具栏「表⚙」'
+  hint.textContent = `${shortcut('↑/↓', 'alt')} 移动 · 题注在工具栏「表⚙」`
   inner.append(hint)
 
   wrap.append(inner)

@@ -395,16 +395,21 @@
 
 .table-controls {
   position: relative;
-  height: 0;
+  /* Reserve a separate row so controls never cover the table header. */
+  min-height: 36px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
 }
 
 .table-controls-inner {
-  position: absolute;
-  right: 0;
-  top: 4px;
+  position: relative;
+  max-width: 100%;
+  box-sizing: border-box;
   z-index: 20;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 3px 8px;
   background: var(--panel);
@@ -420,7 +425,8 @@
 /* 悬停紧随其后的表格（或控制条本身）时显示 */
 .table-controls:has(+ .tableWrapper:hover) .table-controls-inner,
 .table-controls:has(+ table:hover) .table-controls-inner,
-.table-controls:hover .table-controls-inner {
+.table-controls:hover .table-controls-inner,
+.table-controls:focus-within .table-controls-inner {
   opacity: 1;
   pointer-events: auto;
 }

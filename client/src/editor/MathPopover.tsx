@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import katex from 'katex'
+import { shortcut } from '../shortcuts.ts'
 
 export interface MathEditState {
   /** 公式节点在文档中的位置 */
@@ -94,7 +95,7 @@ export function MathPopover({ state, onSave, onDelete, onClose }: MathPopoverPro
         <button type="button" className="btn" onClick={onDelete}>
           删除
         </button>
-        <button type="button" className="btn primary" onClick={save} title="⌘Enter">
+        <button type="button" className="btn primary" onClick={save} title={shortcut('Enter')}>
           保存
         </button>
       </div>
