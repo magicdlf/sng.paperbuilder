@@ -31,7 +31,7 @@ function widget(className: string, text: string, title?: string): HTMLElement {
   return el
 }
 
-function buildDecorations(
+export function buildDecorations(
   doc: PMNode,
   counters: SectionCounters | null,
   openCommentIds: Set<string> | null
@@ -55,14 +55,16 @@ function buildDecorations(
     switch (node.type.name) {
       case 'figure': {
         fig++
+        const number = fig
         // 题注开头插入 "Figure N: "
         decos.push(
-          Decoration.widget(pos + 1, () => widget('num-prefix', `Figure ${fig}: `), { side: -1 })
+          Decoration.widget(pos + 1, () => widget('num-prefix', `Figure ${number}: `), { side: -1 })
         )
         return false
       }
       case 'table': {
         tbl++
+        const number = tbl
         const caption = String(node.attrs.caption ?? '')
         const label = node.attrs.label as string | null
         // 题注在表下方（用户偏好，与 PDF 输出一致）；标号只在悬停提示里显示
@@ -70,7 +72,7 @@ function buildDecorations(
           Decoration.widget(pos + node.nodeSize, () =>
             widget(
               'table-caption-line',
-              `Table ${tbl}: ${caption || '（点击工具栏「表格设置」添加题注）'}`,
+              `Table ${number}: ${caption || '（点击工具栏「表格设置」添加题注）'}`,
               label ? `标号 ${label}（交叉引用用 [@${label}]）` : undefined
             )
           )
@@ -80,10 +82,11 @@ function buildDecorations(
       case 'blockMath': {
         if (node.attrs.label) {
           eq++
+          const number = eq
           const label = String(node.attrs.label)
           decos.push(
             Decoration.widget(pos + node.nodeSize, () =>
-              widget('eq-number', `(${eq})`, `标号 ${label}（交叉引用用 [@${label}]）`)
+              widget('eq-number', `(${number})`, `标号 ${label}（交叉引用用 [@${label}]）`)
             )
           )
         }
