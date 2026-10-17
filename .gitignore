@@ -7,6 +7,7 @@ papers/
 
 # Local teaching papers, machine settings and credentials
 /workshop/
+/paper-library/
 /.claude/
 /.codex/
 /.agents/
