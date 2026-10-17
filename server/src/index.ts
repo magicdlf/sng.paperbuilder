@@ -1,5 +1,4 @@
 import path from 'node:path'
-import os from 'node:os'
 import { promises as fs } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { serve } from '@hono/node-server'
@@ -16,17 +15,14 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 
 async function main(): Promise<void> {
   const explicitPaper = argValue('--paper', process.env.HIMCM_PAPER ?? '') || null
-  const papersRoot = path.resolve(
-    argValue('--papers-root', process.env.HIMCM_PAPERS_ROOT ?? path.join(os.homedir(), 'HiMCMPapers'))
-  )
   const port = Number(argValue('--port', process.env.HIMCM_PORT ?? '4870'))
   // --host 0.0.0.0 开放局域网访问（队友浏览器直连；生产模式 npm start 下前端同端口）
   const host = argValue('--host', process.env.HIMCM_HOST ?? '127.0.0.1')
   const templateDir = path.resolve(here, '../../template')
 
-  const manager = new PaperManager(papersRoot, templateDir)
+  const manager = new PaperManager(templateDir)
   await manager.initial(explicitPaper ? path.resolve(explicitPaper) : null)
-  console.log(`论文根目录: ${papersRoot}`)
+  if (!manager.currentDir) console.log('等待浏览器选择已有或新建论文目录')
 
   let clientDist: string | null = null
   if (process.env.NODE_ENV === 'production') {

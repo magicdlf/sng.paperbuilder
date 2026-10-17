@@ -14,7 +14,7 @@ function argValue(name, fallback) {
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback
 }
 
-// --paper 不给时由 server 决定（上次打开的论文，或 ~/HiMCMPapers/demo）
+// Without --paper the browser restores its last directory or shows a picker.
 const paperDir = argValue('--paper', process.env.HIMCM_PAPER || '')
 const port = argValue('--port', process.env.HIMCM_PORT || '4870')
 

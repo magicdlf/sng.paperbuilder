@@ -21,12 +21,12 @@ export function apiRoutes(ctx: ApiContext): Hono {
   // ---- 论文管理 ----
 
   api.get('/papers', async (c) =>
-    c.json({ papersRoot: ctx.manager.papersRoot, current: cur().dir, papers: await ctx.manager.list() })
+    c.json({ current: ctx.manager.currentDir, papers: await ctx.manager.list() })
   )
 
   api.post('/papers', async (c) => {
-    const body = await c.req.json<{ name?: string }>()
-    const paper = await ctx.manager.create(body.name ?? '')
+    const body = await c.req.json<{ dir?: string }>()
+    const paper = await ctx.manager.create(body.dir ?? '')
     return c.json({ dir: paper.dir })
   })
 

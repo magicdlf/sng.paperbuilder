@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProjectSnapshot } from '@himcm/shared'
 import { api } from '../api.ts'
+import { lastPaperDirectory, rememberPaperDirectory } from '../paperDirectories.ts'
 
 export type SaveState = 'saved' | 'dirty' | 'saving' | 'error' | 'conflict'
 
@@ -23,6 +24,7 @@ export function useProject() {
   const reload = useCallback(async () => {
     try {
       const snap = await api.project()
+      rememberPaperDirectory(snap.paperDir)
       for (const s of snap.sections) {
         // 不覆盖有未保存编辑的章节
         const state = saveStatesRef.current[s.id]
@@ -39,7 +41,19 @@ export function useProject() {
   }, [])
 
   useEffect(() => {
-    void reload()
+    let cancelled = false
+    void (async () => {
+      try {
+        const state = await api.papers()
+        const last = lastPaperDirectory()
+        // Explicit server --paper takes priority; only restore into an idle server.
+        if (!state.current && last && !cancelled) await api.openPaper(last)
+      } catch (err) {
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : String(err))
+      }
+      if (!cancelled) await reload()
+    })()
+    return () => { cancelled = true }
   }, [reload])
 
   const setSaveState = useCallback((id: string, state: SaveState) => {

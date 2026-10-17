@@ -41,7 +41,7 @@ AI 执行安装前应先向用户说明：
 ## 功能
 
 - **所见即所得编辑**：标题/列表/引用块/代码块、行内与块级公式（LaTeX 源码 + KaTeX 实时预览）、三线表、图片（粘贴/拖放自动入库）；图/表可用控制条 ↑↓ 或 `Alt+↑/↓` 整块移动
-- **多论文管理**：顶栏切换器列出 `~/HiMCMPapers` 下所有论文，一键新建/切换/打开任意路径；重启自动回到上次打开的论文
+- **多论文管理**：顶栏目录列表保存在浏览器 localStorage，可添加已有 Git/论文目录或新建指定目录；不扫描或自动创建默认论文库
 - **实时编号**：Figure/Table/Equation 编号在编辑器内实时显示，与最终 PDF 完全一致（同一套计数逻辑）
 - **交叉引用**：`[@fig:x]` / `[@tbl:x]` / `[@eq:x]` / `[@sec:x]` chip 实时解析，导出为 cleveref `\Cref`
 - **参考文献**：`references.json` 管理 + 正文 `[@key]` 引用，导出自动生成 References（无需 BibTeX）
@@ -87,7 +87,7 @@ TeX Live 支持 Windows，应用启动器和 PATH 拼接已做跨平台适配；
 git clone git@github.com:magicdlf/sng.paperbuilder.git PaperBuilder
 cd PaperBuilder
 npm ci --registry=https://registry.npmmirror.com --loglevel=info
-npm run dev                                   # 打开上次的论文（首次为 ~/HiMCMPapers/demo）
+npm run dev                                   # 浏览器恢复上次目录；首次显示目录选择
 # 浏览器打开 http://localhost:5173 ；顶栏 📄 菜单可新建/切换论文
 npm run dev -- --paper /path/to/paper         # 也可显式指定论文目录
 ```
@@ -95,10 +95,14 @@ npm run dev -- --paper /path/to/paper         # 也可显式指定论文目录
 生产模式（单端口、无 vite）：
 
 ```bash
-npm start -- --paper ~/HiMCMPapers/2026       # http://localhost:4870
+npm start -- --paper "/absolute/path/to/team-paper" # http://localhost:4870
 ```
 
 ## 论文目录结构
+
+不带 `--paper` 启动不会创建论文或用户目录。页面左上角输入本地绝对路径：已克隆的 Git 仓库用“打开已有目录”，不存在/空目录用“新建本地论文”。新建复制模板并初始化本地 Git，不自动创建 GitHub 仓库。失效路径不会被“打开”操作重新创建。
+
+目录列表和上次路径即时保存在当前浏览器、当前站点的 localStorage，不写 paper.json；可从列表移除，不删除磁盘文件。换浏览器、端口或清除浏览器数据后需要重新添加。显式 `--paper` 优先于浏览器上次路径；应用仍是单后端共享当前论文。
 
 ```
 你的论文目录/

@@ -406,8 +406,9 @@ export function App() {
   if (loadError) {
     return (
       <div className="app-error">
-        <h2>无法加载论文</h2>
+        <h2>{loadError === '请先打开或新建论文目录' ? '欢迎使用 PaperBuilder' : '无法加载论文'}</h2>
         <p>{loadError}</p>
+        <PaperSwitcher currentDir="" />
         <button type="button" onClick={() => void reload()}>
           重试
         </button>

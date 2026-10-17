@@ -131,7 +131,6 @@ npm run dev -- --paper "/absolute/path/to/papers/team-paper"
 
 ```powershell
 $env:HIMCM_PAPER = "C:\实际路径\PaperBuilderWorkspace\papers\team-paper"
-$env:HIMCM_PAPERS_ROOT = "C:\实际路径\PaperBuilderWorkspace\papers"
 $env:HIMCM_HOST = "127.0.0.1"
 $env:HIMCM_PORT = "4870"
 node .\node_modules\tsx\dist\cli.mjs .\server\src\index.ts
@@ -150,6 +149,8 @@ node ..\node_modules\vite\bin\vite.js --strictPort
 打开 `http://localhost:5173`。若后端端口调整，两个终端的 `HIMCM_PORT` 必须一致。不要绕过系统执行策略；上述直接调用 Node 的方式通常无需执行 npm 的 PowerShell shim。
 
 ## 7. 验证并交付
+
+不带 --paper 启动时不创建默认论文库，浏览器从 localStorage 恢复上次目录，或显示目录选择。已有 Git 仓库先克隆再填本地路径。点击“新建本地论文”才会向指定空目录复制模板；目录列表不写进 paper.json，也不使用 HIMCM_PAPERS_ROOT 或 .last-paper。不同浏览器/站点端口的目录列表相互独立。
 
 检查：
 

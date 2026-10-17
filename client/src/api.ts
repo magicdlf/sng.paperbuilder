@@ -86,7 +86,7 @@ export const api = {
   compile: () => request<CompileResult>('/api/export', jsonInit('POST', { compile: true })),
   exportTex: () => request<{ texPath: string; warnings: string[] }>('/api/export', jsonInit('POST', { compile: false })),
 
-  papers: () => request<{ papersRoot: string; current: string; papers: PaperListItem[] }>('/api/papers'),
-  createPaper: (name: string) => request<{ dir: string }>('/api/papers', jsonInit('POST', { name })),
+  papers: () => request<{ current: string | null; papers: PaperListItem[] }>('/api/papers'),
+  createPaper: (dir: string) => request<{ dir: string }>('/api/papers', jsonInit('POST', { dir })),
   openPaper: (dir: string) => request<{ dir: string }>('/api/papers/open', jsonInit('POST', { dir })),
 }
