@@ -277,10 +277,10 @@ export function App() {
    * - 无改动 → 直接改状态，不产生空提交
    */
   const handleSectionMetaChange = useCallback(
-    (sectionId: string, sectionTitle: string, patch: { owner?: string | null; status?: string }) =>
+    (sectionId: string, sectionTitle: string, patch: { claimed?: boolean; status?: string }) =>
       guard(async () => {
         if (patch.status !== 'review') {
-          await api.patchSectionMeta(sectionId, patch)
+          await api.patchSectionMeta(sectionId, { ...patch, user: identity })
           await reload()
           return
         }
@@ -291,13 +291,13 @@ export function App() {
         }
         const gitStatus = await api.gitStatus()
         if (gitStatus.changedFiles.length === 0) {
-          await api.patchSectionMeta(sectionId, patch)
+          await api.patchSectionMeta(sectionId, { ...patch, user: identity })
           await reload()
           return
         }
         setReviewDialog({ sectionId, sectionTitle, changedFiles: gitStatus.changedFiles })
       }),
-    [guard, saveStates, flushSection, reload]
+    [guard, saveStates, flushSection, reload, identity]
   )
 
   const confirmReview = useCallback(
@@ -307,8 +307,8 @@ export function App() {
         if (!dialog) return
         setReviewDialog(null)
         const msg = `《${dialog.sectionTitle}》送审${description ? `：${description}` : ''}`
+        await api.patchSectionMeta(dialog.sectionId, { status: 'review', user: identity })
         await api.gitCommit(identity ? `[${identity}] ${msg}` : msg)
-        await api.patchSectionMeta(dialog.sectionId, { status: 'review' })
         await refreshGit()
         await reload()
       }),
@@ -435,7 +435,7 @@ export function App() {
             onIdentityChange={changeIdentity}
             onAddMember={(name) =>
               guard(async () => {
-                await api.patchProject({ members: [...(m.members ?? []), name] })
+                await api.addMember(name)
                 await reload()
               })
             }

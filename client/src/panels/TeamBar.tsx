@@ -47,38 +47,31 @@ export function IdentityPicker({
   )
 }
 
-/** 编辑器上方的章节分工条：负责人 + 状态 + 非负责人提醒 */
+/** 个人认领与进度；允许多人认领同一章节。 */
 export function SectionBar({
   section,
-  members,
   identity,
   onChangeMeta,
 }: {
   section: SectionContent
   members: string[]
   identity: string
-  onChangeMeta: (patch: { owner?: string | null; status?: SectionStatus }) => void
+  onChangeMeta: (patch: { claimed?: boolean; status?: SectionStatus }) => void
 }) {
-  const owner = section.owner ?? ''
-  const status = section.status ?? 'draft'
-  const notOwner = Boolean(owner && identity && owner !== identity)
+  const owners = section.owners ?? (section.owner ? [section.owner] : [])
+  const mine = section.contributions?.find(c => c.user === identity)
+  const status = mine?.status ?? 'draft'
+  const claimed = mine?.claimed ?? owners.includes(identity)
 
   return (
     <div className="section-bar">
+      <span>认领：{owners.join('、') || '暂无'}</span>
+      <button type="button" disabled={!identity} onClick={() => onChangeMeta({ claimed: !claimed })}>
+        {claimed ? '取消我的认领' : '我来认领'}
+      </button>
       <label>
-        负责人
-        <select value={owner} onChange={(e) => onChangeMeta({ owner: e.target.value || null })}>
-          <option value="">（未分配）</option>
-          {members.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        状态
-        <select value={status} onChange={(e) => onChangeMeta({ status: e.target.value as SectionStatus })}>
+        我的进度
+        <select disabled={!identity} value={status} onChange={(e) => onChangeMeta({ status: e.target.value as SectionStatus })}>
           {(Object.keys(STATUS_META) as SectionStatus[]).map((s) => (
             <option key={s} value={s}>
               {STATUS_META[s].label}
@@ -88,7 +81,10 @@ export function SectionBar({
       </label>
       <span className={`status-chip ${STATUS_META[status].cls}`}>{STATUS_META[status].label}</span>
       {status === 'review' && <span className="section-bar-hint">评审中：欢迎用 💬 添加批注</span>}
-      {notOwner && <span className="section-bar-warn">此章节由 {owner} 负责——修改前最好打个招呼</span>}
+      {!identity && <span className="section-bar-hint">先在顶栏选择“我是谁”</span>}
+      {section.contributions?.filter(c => c.claimed && c.user !== identity).map(c => (
+        <span key={c.user} className="section-bar-hint">{c.user}：{STATUS_META[c.status ?? 'draft'].label}</span>
+      ))}
     </div>
   )
 }

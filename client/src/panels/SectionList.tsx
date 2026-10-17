@@ -90,9 +90,9 @@ export function SectionList({ snapshot, activeId, saveStates, onSelect, onCreate
                   {s.title}
                 </span>
                 <span className="section-badges">
-                  {s.owner && (
-                    <span className="owner-badge" title={`负责人：${s.owner}`}>
-                      {s.owner.slice(0, 2)}
+                  {(s.owners?.length || s.owner) && (
+                    <span className="owner-badge" title={`认领：${(s.owners ?? [s.owner]).join("、")}`}>
+                      {(s.owners ?? [s.owner]).join("、")}
                     </span>
                   )}
                   {badge && <span className="badge">{badge}</span>}

@@ -67,9 +67,17 @@ export function apiRoutes(ctx: ApiContext): Hono {
     return c.json({ section })
   })
 
+  api.post('/members', async (c) => {
+    await assertWritable()
+    const body = await c.req.json<{ user: string }>()
+    await cur().store.recordCollaboration(body.user)
+    return c.json({ ok: true })
+  })
+
   api.patch('/sections/:id/meta', async (c) => {
     await assertWritable()
-    const body = await c.req.json<{ owner?: string | null; status?: 'draft' | 'review' | 'done' }>()
+    const body = await c.req.json<{ user: string; claimed?: boolean; status?: 'draft' | 'review' | 'done' }>()
+    if (!body.user) throw new HttpError(400, '协作接口已升级，请刷新页面并在顶栏选择用户名后重试')
     const meta = await cur().store.updateSectionMeta(c.req.param('id'), body)
     return c.json({ meta })
   })

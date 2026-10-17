@@ -171,7 +171,7 @@ node ..\node_modules\vite\bin\vite.js --strictPort
 - 本地干净且没有本地未推送提交时，可以使用 `git pull --ff-only`。出现分叉或冲突则停止，展示状态并协助处理，不强行覆盖。
 - 编辑后等待界面保存成功，再提交并 push。提交前检查 diff，避免误提交凭据或无关文件。
 - 外部 pull、合并或切换版本时，关闭编辑页面；完成后重新打开，避免旧页面将旧内容写回。
-- 按章节分工；`paper.json`、`comments.json`、`references.json` 由指定成员协调编辑。当前不是实时共同编辑系统。
+- 按章节分工；顶栏选择唯一用户名。成员、认领和进度使用 `collaboration/` 下的个人操作记录，必须随论文提交；不需要手动迁移旧 `paper.json`。旧版不显示新记录，团队应统一升级应用并刷新页面（论文无需重新 clone）。章节结构、`comments.json`、`references.json` 仍由指定成员协调编辑。当前不是实时共同编辑系统。
 - `build/` 默认不进入 Git。教师拉取论文源码和图片后统一编译 PDF。
 
 ## 当前已知边界

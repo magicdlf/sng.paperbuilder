@@ -144,7 +144,7 @@ export class ProjectStore {
   async snapshot(): Promise<ProjectSnapshot> {
     const manifest = await this.loadManifest()
     const sections = await Promise.all(manifest.sections.map((meta) => this.readSectionContent(meta)))
-    return { paperDir: this.paperDir, manifest, sections }
+    return this.applyCollaboration({ paperDir: this.paperDir, manifest, sections })
   }
 
   /**
@@ -168,22 +168,78 @@ export class ProjectStore {
       }
     }
     await writeFileAtomic(abs, md)
-    return this.readSectionContent(meta)
+    return (await this.snapshot()).sections.find(s => s.id === id)!
   }
 
-  async updateSectionMeta(
-    id: string,
-    patch: { owner?: string | null; status?: SectionStatus }
-  ): Promise<SectionMeta> {
-    const manifest = await this.loadManifest()
-    const meta = this.sectionMeta(manifest, id)
-    if (patch.owner !== undefined) meta.owner = patch.owner === null ? null : String(patch.owner)
-    if (patch.status !== undefined) {
-      if (!STATUSES.includes(patch.status)) throw new HttpError(400, `未知状态: ${patch.status}`)
-      meta.status = patch.status
+  /** Each user writes immutable records under their own namespace, never paper.json. */
+  async recordCollaboration(user: string, sectionId?: string, patch: { claimed?: boolean; status?: SectionStatus } = {}): Promise<void> {
+    user = String(user ?? '').trim()
+    if (!user || user.length > 100) throw new HttpError(400, '请先选择有效的用户名（最多 100 字符）')
+    if (sectionId) this.sectionMeta(await this.loadManifest(), sectionId)
+    if (patch.claimed !== undefined && typeof patch.claimed !== 'boolean') throw new HttpError(400, 'claimed 必须为布尔值')
+    if (patch.status !== undefined && !STATUSES.includes(patch.status)) throw new HttpError(400, '未知状态')
+    const namespace = crypto.createHash('sha256').update(user).digest('hex')
+    const userDir = path.join(this.paperDir, 'collaboration', namespace)
+    await fs.mkdir(userDir, { recursive: true })
+    const previous = (await fs.readdir(userDir)).filter(f => /^\d{16}-/.test(f)).sort().at(-1)
+    const timestamp = Math.max(Date.now(), previous ? Number(previous.slice(0, 16)) + 1 : 0)
+    const id = `${timestamp.toString().padStart(16, '0')}-${crypto.randomUUID()}`
+    await writeFileAtomic(path.join(userDir, `${id}.json`),
+      JSON.stringify({ version: 1, user, sectionId, ...patch }, null, 2) + '\n')
+  }
+
+  private async applyCollaboration(snapshot: ProjectSnapshot): Promise<ProjectSnapshot> {
+    const dir = path.join(this.paperDir, 'collaboration')
+    let users: string[]
+    try { users = await fs.readdir(dir) } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') users = []
+      else throw err
     }
-    await this.saveManifest(manifest)
-    return meta
+    const members = new Set(snapshot.manifest.members ?? [])
+    const states = new Map<string, Map<string, { user: string; claimed: boolean; status?: SectionStatus }>>()
+    for (const section of snapshot.sections) {
+      const state = new Map<string, { user: string; claimed: boolean; status?: SectionStatus }>()
+      if (section.owner) {
+        members.add(section.owner)
+        state.set(section.owner, { user: section.owner, claimed: true, status: section.status })
+      }
+      states.set(section.id, state)
+    }
+    for (const namespace of users.sort()) {
+      if (!/^[a-f0-9]{64}$/.test(namespace)) continue
+      const files = await fs.readdir(path.join(dir, namespace))
+      for (const file of files.filter(f => /^\d{16}-[a-f0-9-]+\.json$/.test(f)).sort()) {
+        const record = JSON.parse(await fs.readFile(path.join(dir, namespace, file), 'utf8'))
+        if (record.version !== 1 || typeof record.user !== 'string' ||
+          crypto.createHash('sha256').update(record.user).digest('hex') !== namespace ||
+          (record.claimed !== undefined && typeof record.claimed !== 'boolean') ||
+          (record.status !== undefined && !STATUSES.includes(record.status))) {
+          throw new HttpError(400, `协作记录无效：${namespace}/${file}`)
+        }
+        members.add(record.user)
+        const state = states.get(record.sectionId)
+        if (!state) continue
+        const prev = state.get(record.user) ?? { user: record.user, claimed: false }
+        state.set(record.user, { ...prev,
+          ...(record.claimed !== undefined ? { claimed: record.claimed } : {}),
+          ...(record.status !== undefined ? { status: record.status } : {}),
+        })
+      }
+    }
+    snapshot.manifest.members = [...members].sort()
+    for (const section of snapshot.sections) {
+      section.contributions = [...states.get(section.id)!.values()].sort((a, b) => a.user.localeCompare(b.user))
+      section.owners = section.contributions.filter(c => c.claimed).map(c => c.user)
+      section.owner = section.owners[0] ?? null
+      const statuses = section.contributions.filter(c => c.claimed && c.status).map(c => c.status)
+      if (statuses.length) section.status = statuses.includes('review') ? 'review' : statuses.includes('draft') ? 'draft' : 'done'
+    }
+    return snapshot
+  }
+
+  async updateSectionMeta(id: string, patch: { user: string; claimed?: boolean; status?: SectionStatus }): Promise<SectionContent> {
+    await this.recordCollaboration(patch.user, id, { claimed: patch.claimed, status: patch.status })
+    return (await this.snapshot()).sections.find(s => s.id === id)!
   }
 
   async createSection(title: string, afterId?: string): Promise<{ manifest: PaperManifest; section: SectionContent }> {
