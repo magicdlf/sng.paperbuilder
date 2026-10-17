@@ -4,3 +4,21 @@ build/
 papers/
 .DS_Store
 *.tsbuildinfo
+
+# Local teaching papers, machine settings and credentials
+/workshop/
+/.claude/
+/.codex/
+/.agents/
+.env
+.env.*
+!.env.example
+*.local
+*.log
+.npm/
+.cache/
+coverage/
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/

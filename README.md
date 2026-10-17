@@ -1,4 +1,4 @@
-# HiMCM Paper
+# PaperBuilder
 
 为 HiMCM/MidMCM 数模比赛打造的本地论文写作工具：浏览器里 Notion/Typora 式所见即所得编辑，一键导出符合 COMAP 规范的 LaTeX 并本地编译 PDF。
 
@@ -16,14 +16,17 @@
 
 ## 环境要求
 
-- macOS + Node.js ≥ 20
-- MacTeX（`latexmk` / `pdflatex`，安装于 `/Library/TeX/texbin`）
+- Windows / macOS / Linux + Node.js 24 LTS（或 Node.js 22 ≥ 22.12）+ Git
+- 仅编辑论文不需要 TeX，浏览器公式预览正常；PDF 由教师统一编译也可以
+- 需要本机编译 PDF 时：安装 TeX Live / MacTeX，确保 `latexmk`、Perl、`pdflatex`（或 `xelatex`）可用；Windows 尚需实际机器验收
 - 可选：`brew install poppler`（pdfinfo，页数交叉验证）
 
 ## 快速开始
 
 ```bash
-npm install
+git clone git@github.com:magicdlf/sng.paperbuilder.git PaperBuilder
+cd PaperBuilder
+npm ci
 npm run dev                                   # 打开上次的论文（首次为 ~/HiMCMPapers/demo）
 # 浏览器打开 http://localhost:5173 ；顶栏 📄 菜单可新建/切换论文
 npm run dev -- --paper /path/to/paper         # 也可显式指定论文目录
@@ -64,10 +67,15 @@ npm start -- --paper ~/HiMCMPapers/2026       # http://localhost:4870
 
 ## 注意事项
 
+- 给学生 AI 的完整操作说明见 [AI_INSTALL_INSTRUCTIONS.md](AI_INSTALL_INSTRUCTIONS.md)
+- 应用仓库与团队论文仓库应分别克隆；使用 `--paper` 指定团队论文目录。内置 `template/` 保留为最小示例，真实课堂论文放在独立私有仓库
+- 应用内 Git 提交不会自动 push/pull；多人按章节分工，外部同步时先关闭编辑页面。当前不支持实时共同编辑
+- 同一后端进程只有一篇当前论文，不要让不同组共用同一进程
+
 - **论文正文必须英文**：默认引擎 pdflatex 无法编译中日韩字符，导出前会自动检查并警告
 - 公式请用 KaTeX/LaTeX 共同子集；多行推导用 `aligned` 环境（不要用 `align`）；编辑器渲染失败但 PDF 可能正常的公式会标记 "PDF-only"
 - v1 表格不支持合并单元格（管道表语法限制，三线表规范也不鼓励）
-- 本仓库的 `.npmrc` 将 npm 缓存指向 `~/.cache/npm-himcm`：因为机器上 `~/.npm` 内有历史 `sudo npm` 留下的 root 属主目录会导致安装失败；执行 `sudo chown -R $(whoami):staff ~/.npm` 修复后可删除该文件
+- 若 npm 默认缓存有权限问题，可用 `npm ci --cache ./node_modules/.cache/npm`，不要使用 `sudo npm install`
 
 ## 开发
 

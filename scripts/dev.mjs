@@ -18,7 +18,10 @@ function argValue(name, fallback) {
 const paperDir = argValue('--paper', process.env.HIMCM_PAPER || '')
 const port = argValue('--port', process.env.HIMCM_PORT || '4870')
 
-const bin = (name) => path.join(root, 'node_modules', '.bin', name)
+// Invoke JS entrypoints with this Node runtime, avoiding Unix-only .bin shims.
+const tool = (name) => path.join(root, 'node_modules', ...(
+  name === 'tsx' ? ['tsx', 'dist', 'cli.mjs'] : ['vite', 'bin', 'vite.js']
+))
 const children = []
 
 function run(label, command, cmdArgs, cwd, env = {}) {
@@ -42,6 +45,10 @@ function run(label, command, cmdArgs, cwd, env = {}) {
     shutdown()
   })
   children.push(child)
+  child.on('error', (err) => {
+    console.error(prefix(err.message))
+    shutdown()
+  })
 }
 
 let shuttingDown = false
@@ -58,13 +65,13 @@ const serverArgs = ['src/index.ts', '--port', port]
 if (paperDir) serverArgs.push('--paper', path.resolve(paperDir))
 run(
   'server',
-  bin('tsx'),
-  prod ? serverArgs : ['watch', ...serverArgs],
+  process.execPath,
+  [tool('tsx'), ...(prod ? serverArgs : ['watch', ...serverArgs])],
   path.join(root, 'server'),
   prod ? { NODE_ENV: 'production' } : {}
 )
 if (!prod) {
-  run('client', bin('vite'), ['--strictPort'], path.join(root, 'client'), { HIMCM_PORT: port })
+  run('client', process.execPath, [tool('vite'), '--strictPort'], path.join(root, 'client'), { HIMCM_PORT: port })
 } else {
   console.log(`生产模式：打开 http://localhost:${port}`)
 }

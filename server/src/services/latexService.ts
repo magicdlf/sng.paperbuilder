@@ -83,7 +83,7 @@ export class LatexService {
           cwd: this.buildDir,
           env: {
             ...process.env,
-            PATH: `${TEXBIN}:${process.env.PATH ?? ''}`,
+            PATH: [TEXBIN, process.env.PATH ?? ''].join(path.delimiter),
             // 禁止 TeX 日志 79 列硬折行，否则错误行会被截断导致解析失败
             max_print_line: '10000',
           },
