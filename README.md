@@ -57,6 +57,30 @@ AI 执行安装前应先向用户说明：
 - 需要本机编译 PDF 时：安装 TeX Live / MacTeX，确保 `latexmk`、Perl、`pdflatex`（或 `xelatex`）可用；Windows 尚需实际机器验收
 - 可选：`brew install poppler`（pdfinfo，页数交叉验证）
 
+## 可选：本机编译 PDF（给 AI Agent）
+
+读完安装说明后，agent 应主动告诉用户：
+
+> 浏览器编辑、公式预览和 Git 功能不需要 TeX。本机生成 PDF 需要额外安装 TeX Live；Mac 可以安装 MacTeX（包含 TeX Live）。你希望现在安装编译环境，还是先只编辑、由教师编译？
+
+只有用户选择本机编译时才安装。先检查已有环境，不重复安装完整发行版：
+
+```bash
+latexmk -v
+pdflatex --version
+xelatex --version
+```
+
+- **Windows**：从 [TeX Live 官方入口](https://tug.org/texlive/) 获取 Windows 安装器，优先完整安装，并确保 TeX 的可执行目录加入 PATH。Agent 按当前系统和官方说明完成安装，检查 latexmk 所需的 Perl 环境；不要仅下载一个编译器可执行文件。
+- **macOS**：可从 [MacTeX](https://www.tug.org/mactex/) 安装，已有 Homebrew 时可用 `brew install --cask mactex-no-gui`（[说明](https://formulae.brew.sh/cask/mactex-no-gui)）。
+- **Linux**：使用发行版的 TeX Live 包或官方安装器，包含 latexmk、pdflatex/xelatex 以及模板所需宏包和字体。
+
+完整 TeX 环境体积较大、安装耗时较长，agent 应在执行前说明下载来源、安装位置及可能需要的权限，并在安装期间报告进展。大陆用户可按官方 CTAN 镜像列表选择就近镜像；npm 的 npmmirror 配置不影响 TeX 下载。
+
+安装后重新打开终端，重新检查工具，再停止并重启 PaperBuilder，使后端继承新的 PATH。选择英文示例测试网页 PDF 编译；失败时先诊断工具路径、宏包、字体和编译日志，不自动修改应用源码。
+
+TeX Live 支持 Windows，应用启动器和 PATH 拼接已做跨平台适配；**PaperBuilder 在 Windows 上的完整编译流程尚未实机验收**。默认 pdflatex 用于英文论文，中文指南不能直接按默认配置编译。`pdfinfo` 只是可选页数交叉验证工具，不是生成 PDF 的必需依赖。
+
 ## 快速开始
 
 ```bash
