@@ -23,11 +23,11 @@ export class LatexService {
   }
 
   /** 组装 build/paper.tex（+ 复制 assets 使 build 目录自包含，可直接上传 Overleaf） */
-  async exportTex(): Promise<{ texPath: string; lineMap: Array<{ line: number; sectionId: string }>; warnings: string[] }> {
+  async exportTex(): Promise<{ texPath: string; lineMap: Array<{ line: number; sectionId: string }>; warnings: string[]; engine: 'pdflatex' | 'xelatex' }> {
     const snapshot = await this.store.snapshot()
     const refs = await this.store.loadReferences()
 
-    const warnings = lintSections(snapshot.sections.filter((s) => s.md))
+    let warnings: string[] = []
 
     let commentTexts: Record<string, string> | undefined
     if (snapshot.manifest.export.draftComments) {
@@ -44,12 +44,17 @@ export class LatexService {
       return { meta, doc: meta.file && content ? mdToDoc(content.md) : null }
     })
 
-    const { tex, lineMap } = assemblePaper({
+    const { tex, lineMap, engine } = assemblePaper({
       manifest: snapshot.manifest,
       sections,
       references: refs.references,
       commentTexts,
     })
+    if (engine === 'xelatex' && snapshot.manifest.export.engine === 'pdflatex') {
+      warnings.push('检测到中文，已自动使用 XeLaTeX 和 TeX Live 内置 Fandol 字体编译。')
+    } else if (engine === 'pdflatex') {
+      warnings = lintSections(snapshot.sections.filter((s) => s.md))
+    }
 
     await fs.mkdir(this.buildDir, { recursive: true })
     const texPath = path.join(this.buildDir, 'paper.tex')
@@ -65,14 +70,13 @@ export class LatexService {
       /* 无 assets 目录 */
     }
 
-    return { texPath, lineMap, warnings }
+    return { texPath, lineMap, warnings, engine }
   }
 
   async compile(): Promise<CompileResult> {
     const started = Date.now()
-    const { lineMap, warnings: lintWarnings } = await this.exportTex()
-    const manifest = await this.store.loadManifest()
-    const engineFlag = manifest.export.engine === 'xelatex' ? '-pdfxe' : '-pdf'
+    const { lineMap, warnings: lintWarnings, engine } = await this.exportTex()
+    const engineFlag = engine === 'xelatex' ? '-pdfxe' : '-pdf'
 
     let latexmkFailed = false
     try {
@@ -125,7 +129,9 @@ export class LatexService {
     }
 
     // 页数：log 总页数 + aux 中 AI 报告起始页
-    let pagesTotal = parsed.pagesTotal
+    const pdfinfoPages = pdfAvailable ? await this.pdfinfoPages() : null
+    // XeLaTeX may report XDV rather than PDF page totals in the TeX log.
+    let pagesTotal = parsed.pagesTotal ?? pdfinfoPages
     let pagesCounted: number | null = null
     let pagesVerified = false
 
@@ -139,8 +145,7 @@ export class LatexService {
       }
       pagesCounted = aiPage !== null ? aiPage - 1 : pagesTotal
       // pdfinfo 交叉验证
-      const pdfinfoPages = pdfAvailable ? await this.pdfinfoPages() : null
-      pagesVerified = pdfinfoPages === null ? false : pdfinfoPages === pagesTotal
+      pagesVerified = parsed.pagesTotal !== null && pdfinfoPages !== null && pdfinfoPages === pagesTotal
       if (pdfinfoPages !== null && pdfinfoPages !== pagesTotal) {
         pagesTotal = pdfinfoPages
         pagesCounted = aiPage !== null ? aiPage - 1 : pdfinfoPages

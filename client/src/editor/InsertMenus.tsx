@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
 import { findParentNodeClosestToPos } from '@tiptap/core'
 import { crossRefDisplay, type ColumnAlign } from '@himcm/shared'
 import { useNumbering } from './NumberingContext.ts'
+import { moveTableRow } from './moveTableRow.ts'
 
 /** 点击外部关闭的下拉容器 */
 export function Dropdown({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
@@ -70,6 +72,10 @@ export function RefPicker({ editor, onClose }: { editor: Editor; onClose: () => 
 
 /** 表格设置：题注 / 标号 / 列对齐 / 行列增删 */
 export function TableSettings({ editor, onClose }: { editor: Editor; onClose: () => void }) {
+  const rowState = useEditorState({ editor, selector: ({ editor: e }) => ({
+    up: moveTableRow(e, -1, false), down: moveTableRow(e, 1, false),
+    from: e.state.selection.from,
+  }) })
   const table = findParentNodeClosestToPos(editor.state.selection.$from, (n) => n.type.name === 'table')
   const [caption, setCaption] = useState(table ? String(table.node.attrs.caption ?? '') : '')
   const [label, setLabel] = useState(table ? String(table.node.attrs.label ?? '') : '')
@@ -125,11 +131,20 @@ export function TableSettings({ editor, onClose }: { editor: Editor; onClose: ()
           ))}
         </div>
         <div className="table-ops">
+          <button type="button" className="btn" disabled={!rowState.up} onMouseDown={e => e.preventDefault()} onClick={() => moveTableRow(editor, -1)}>
+            上移当前行
+          </button>
+          <button type="button" className="btn" disabled={!rowState.down} onMouseDown={e => e.preventDefault()} onClick={() => moveTableRow(editor, 1)}>
+            下移当前行
+          </button>
+          <button type="button" className="btn" onMouseDown={e => e.preventDefault()} onClick={() => editor.chain().focus().addRowBefore().run()}>
+            上方插入行
+          </button>
           <button type="button" className="btn" onClick={() => editor.chain().focus().addRowAfter().run()}>
-            +行
+            下方插入行
           </button>
           <button type="button" className="btn" onClick={() => editor.chain().focus().deleteRow().run()}>
-            −行
+            删除当前行
           </button>
           <button type="button" className="btn" onClick={() => editor.chain().focus().addColumnAfter().run()}>
             +列

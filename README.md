@@ -79,7 +79,7 @@ xelatex --version
 
 安装后重新打开终端，重新检查工具，再停止并重启 PaperBuilder，使后端继承新的 PATH。选择英文示例测试网页 PDF 编译；失败时先诊断工具路径、宏包、字体和编译日志，不自动修改应用源码。
 
-TeX Live 支持 Windows，应用启动器和 PATH 拼接已做跨平台适配；**PaperBuilder 在 Windows 上的完整编译流程尚未实机验收**。默认 pdflatex 用于英文论文，中文指南不能直接按默认配置编译。`pdfinfo` 只是可选页数交叉验证工具，不是生成 PDF 的必需依赖。
+TeX Live 支持 Windows，应用启动器和 PATH 拼接已做跨平台适配；**PaperBuilder 在 Windows 上的完整编译流程尚未实机验收**。英文默认使用 pdflatex；检测到中文标题、正文或参考文献时自动改用 XeLaTeX、ctex 和 TeX Live 自带 Fandol 字体，无需依赖系统宋体。`pdfinfo` 是可选页数核验工具，也用于补充 XeLaTeX 日志未提供的页数。
 
 ## 快速开始
 
@@ -132,7 +132,8 @@ npm start -- --paper ~/HiMCMPapers/2026       # http://localhost:4870
 - 应用内 Git 提交不会自动 push/pull；多人按章节分工，外部同步时先关闭编辑页面。当前不支持实时共同编辑
 - 同一后端进程只有一篇当前论文，不要让不同组共用同一进程
 
-- **论文正文必须英文**：默认引擎 pdflatex 无法编译中日韩字符，导出前会自动检查并警告
+- **中文教学材料可编译**：自动使用 XeLaTeX 和内置中文字体；正式参赛论文语言仍以比赛要求为准
+- 点击表格单元格，再打开工具栏「表⚙」，可在当前行上/下方插入行、删除当前行或上下交换数据行；表头保持第一行，边界处禁用移动
 - 公式请用 KaTeX/LaTeX 共同子集；多行推导用 `aligned` 环境（不要用 `align`）；编辑器渲染失败但 PDF 可能正常的公式会标记 "PDF-only"
 - v1 表格不支持合并单元格（管道表语法限制，三线表规范也不鼓励）
 - 若 npm 默认缓存有权限问题，可用 `npm ci --cache ./node_modules/.cache/npm`，不要使用 `sudo npm install`

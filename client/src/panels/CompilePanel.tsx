@@ -268,8 +268,8 @@ function MetaForm({
           value={manifest.export.engine}
           onChange={(e) => void onPatch({ export: { engine: e.target.value } })}
         >
-          <option value="pdflatex">pdflatex（推荐）</option>
-          <option value="xelatex">xelatex</option>
+          <option value="pdflatex">pdflatex（英文；中文自动切换）</option>
+          <option value="xelatex">XeLaTeX（支持中文）</option>
         </select>
       </label>
     </div>

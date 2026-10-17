@@ -173,4 +173,17 @@ describe('assemblePaper', () => {
     const warnings = lintSections([{ id: 'x', title: '模型', md: '中文内容' }])
     expect(warnings.length).toBe(1)
   })
+
+  it('中文标题自动使用 XeLaTeX 和随 TeX Live 分发的字体', () => {
+    const result = assemblePaper({ ...input, manifest: { ...manifest, title: '使用指南' } })
+    expect(result.engine).toBe('xelatex')
+    expect(result.tex).toContain('fontset=fandol')
+    expect(result.tex).toContain('\\let\\st\\CJKsout')
+    expect(result.tex).not.toContain('\\usepackage[utf8]{inputenc}')
+  })
+
+  it('中文参考文献也触发切换，英文默认仍使用 pdflatex', () => {
+    expect(assemblePaper(input).engine).toBe('pdflatex')
+    expect(assemblePaper({ ...input, references: [{ key: 'zh', title: '中文参考文献' }] }).engine).toBe('xelatex')
+  })
 })

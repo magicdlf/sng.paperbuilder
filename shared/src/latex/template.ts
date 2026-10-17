@@ -19,21 +19,22 @@ export interface AssembleInput {
 
 export interface AssembledLatex {
   tex: string
+  engine: 'pdflatex' | 'xelatex'
   /** 有序：每章内容在 .tex 中的起始行（1-based），用于编译错误回溯 */
   lineMap: Array<{ line: number; sectionId: string }>
 }
 
 /** 基于 COMAP 官方 2025 模板的 preamble（pdflatex 原生路径） */
-function preamble(manifest: PaperManifest, draftComments: boolean): string {
+function preamble(manifest: PaperManifest, draftComments: boolean, engine: 'pdflatex' | 'xelatex'): string {
   const compact = manifest.export.layout === 'compact'
   const geometry = compact
     ? 'left=2cm,right=2cm,top=2.5cm,bottom=2cm'
     : 'left=1in,top=1in,bottom=1in,right=0.75in'
   const useFloat = manifest.export.floatPlacement === 'here' ? '\\usepackage{float}\n' : ''
   return `\\documentclass[12pt,letterpaper]{article}
-\\usepackage[T1]{fontenc}
-\\usepackage[utf8]{inputenc}
+${engine === 'pdflatex' ? '\\usepackage[T1]{fontenc}\n\\usepackage[utf8]{inputenc}' : '\\usepackage{fontspec}'}
 \\usepackage{newtxtext,newtxmath}
+${engine === 'xelatex' ? '\\usepackage[UTF8,scheme=plain,fontset=fandol]{ctex}\n\\setmainfont{texgyretermes}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,ItalicFont=*-italic,BoldItalicFont=*-bolditalic]' : ''}
 \\usepackage[letterpaper,${geometry}]{geometry}
 % 注意：不加载 amssymb —— newtxmath 已提供 AMS 符号，重复加载会因 \\Bbbk 冲突报错
 \\usepackage{amsmath}
@@ -44,6 +45,7 @@ function preamble(manifest: PaperManifest, draftComments: boolean): string {
 \\usepackage{caption}
 \\usepackage{listings}
 \\usepackage{soul}
+${engine === 'xelatex' ? '\\usepackage{xeCJKfntef}\n\\let\\st\\CJKsout\n\\usepackage{newunicodechar}\n\\newunicodechar{⌘}{\\texttt{Cmd}}\n\\newunicodechar{↑}{\\ensuremath{\\uparrow}}\n\\newunicodechar{↓}{\\ensuremath{\\downarrow}}\n\\newunicodechar{∑}{\\ensuremath{\\sum}}\n\\newunicodechar{ƒ}{\\ensuremath{f}}\n\\newunicodechar{⚙}{设置}' : ''}
 \\usepackage{fancyhdr}
 \\usepackage{lastpage}
 ${useFloat}${draftComments ? '\\usepackage[colorinlistoftodos,textsize=footnotesize]{todonotes}\n' : ''}\\usepackage[hidelinks]{hyperref}
@@ -118,9 +120,15 @@ function formatReference(ref: Reference): string {
 export function assemblePaper(input: AssembleInput): AssembledLatex {
   const { manifest, sections, references } = input
   const draft = manifest.export.draftComments
+  // Cover titles, captions, citations and draft comments as well as body text.
+  const content = JSON.stringify({
+    manifest, references, comments: input.commentTexts,
+    docs: sections.map(s => s.doc?.toJSON()),
+  })
+  const engine = /[\u3400-\u9fff]/u.test(content) ? 'xelatex' : manifest.export.engine
   const chunks: Array<{ text: string; sectionId?: string }> = []
 
-  chunks.push({ text: preamble(manifest, draft) })
+  chunks.push({ text: preamble(manifest, draft, engine) })
   chunks.push({ text: '\\begin{document}\n' })
 
   const latexOpts = (numbered: boolean) => ({
@@ -198,7 +206,7 @@ export function assemblePaper(input: AssembleInput): AssembledLatex {
     parts.push(chunk.text)
     line += chunk.text.split('\n').length + 1 // +1 是块间空行
   }
-  return { tex: parts.join('\n\n') + '\n', lineMap }
+  return { tex: parts.join('\n\n') + '\n', lineMap, engine }
 }
 
 /** 导出前置检查：CJK 字符在 pdflatex 下无法编译 */
