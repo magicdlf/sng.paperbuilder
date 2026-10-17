@@ -8,22 +8,35 @@
 
 **开始前先问用户：**
 
-> 你想先创建本地试用论文，还是克隆已有团队/教师的论文 Git 仓库？如果克隆，请提供仓库地址（SSH 或 HTTPS）。
+> 你想克隆 PaperKit 示例库先体验，还是新建自己的论文 Git 仓库？如果已有论文仓库，请提供地址，直接克隆使用。
 
-- **本地试用**：询问存放目录，选择不存在的目录，例如用户目录下 `PaperBuilderPapers/my-trial`；使用下面命令启动后会复制内置模板并初始化本地 Git，不会自动上传。
+- **示例体验（首次推荐）**：直接克隆 `https://github.com/magicdlf/sng.paperkit.git` 到应用目录以外的 `PaperKit/`，打开 `paperbuilder-guide/`，或让用户选择蜜蜂示例。不需要用户再提供示例库地址。
+- **新建论文仓库**：询问仓库名和位置，在应用目录以外新建目录并 `git init`；复制内置 `template/` 的内容，将 `gitignore` 改名为 `.gitignore`，或复制用户选定的 PaperKit 论文文件，不携带示例库历史。启动时指向新目录。用户提供远程地址后配置 origin；本地初始化不会自动创建 GitHub 仓库。
 - **克隆已有论文**：获取 URL，克隆到应用目录以外，确认存在 `paper.json` 与 `sections/`，再指向该目录启动。若克隆的是含多份论文的示例库，先让用户选一份，`--paper` 指向具体论文子目录而非库根目录。
 - 不要要求没有团队仓库的新用户先创建 GitHub 仓库；之后可以再设置 remote。
 - 不覆盖现有目录，不修改应用源码来适应安装，不自动推送。启动完成后报告浏览器地址、论文路径及停止方式。
 
 ```bash
-# 在应用根目录，仅首次安装/更新依赖时执行
-npm ci
+# 在应用目录以外克隆示例库；已有克隆则复用
+git clone https://github.com/magicdlf/sng.paperkit.git PaperKit
+# 回到应用根目录，仅首次安装/更新依赖时执行
+npm ci --registry=https://registry.npmmirror.com --loglevel=info
 # 改为用户选择的绝对路径，路径有空格也可用
-npm run dev -- --paper "/absolute/path/to/PaperBuilderPapers/my-trial"
+npm run dev -- --paper "/absolute/path/to/PaperKit/paperbuilder-guide"
 # 浏览器入口：http://localhost:5173；终端 Ctrl+C 停止
 ```
 
 应用代码与论文 Git 独立。示例库中的使用指南是一份可在编辑器中打开的论文，每章演示一个功能；正式团队应复制选定模板到自己的新仓库，不携带整个示例库或教师历史。
+
+## 安装前提示：下载什么、从哪里下载
+
+AI 执行安装前应先向用户说明：
+
+> 接下来从大陆 npm 镜像 npmmirror（https://registry.npmmirror.com）下载 PaperBuilder 的 JavaScript 依赖，包括 React/TipTap 编辑器、KaTeX 公式预览、Hono 后端，以及 Vite、tsx、TypeScript、Vitest 等构建和测试工具及其依赖。文件安装到本项目 node_modules，不安装 TeX，也不安装系统 Node 或 Git。首次耗时取决于网络与缓存，安装时会显示请求和进度日志；完成后日常启动不需要重复安装。
+
+项目 `.npmrc` 默认使用该镜像，不修改用户全局 npm 设置。`npm ci` 按 package-lock.json 固定版本安装，并重建 node_modules；不能在每次启动前执行。镜像说明见 [npmmirror](https://npmmirror.com/)，安装行为见 [npm ci 官方文档](https://docs.npmjs.com/cli/v11/commands/npm-ci/)。
+
+安装长时间无进展时，AI 应检查最近的下载日志并说明正在下载什么；可先用 `npm ping --registry=https://registry.npmmirror.com` 检查连通性。不要静默改用其他源、关闭证书检查或删除锁文件。镜像缺包时先报告，再讨论替代源。GitHub 克隆、系统 Node/Git 安装不受 npm 镜像设置影响。
 
 ## 功能
 
@@ -49,7 +62,7 @@ npm run dev -- --paper "/absolute/path/to/PaperBuilderPapers/my-trial"
 ```bash
 git clone git@github.com:magicdlf/sng.paperbuilder.git PaperBuilder
 cd PaperBuilder
-npm ci
+npm ci --registry=https://registry.npmmirror.com --loglevel=info
 npm run dev                                   # 打开上次的论文（首次为 ~/HiMCMPapers/demo）
 # 浏览器打开 http://localhost:5173 ；顶栏 📄 菜单可新建/切换论文
 npm run dev -- --paper /path/to/paper         # 也可显式指定论文目录
