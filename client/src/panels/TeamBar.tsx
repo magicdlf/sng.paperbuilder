@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { SectionContent, SectionStatus } from '@himcm/shared'
 
 export const STATUS_META: Record<SectionStatus, { label: string; cls: string }> = {
@@ -16,34 +17,63 @@ export function IdentityPicker({
   members: string[]
   identity: string
   onIdentityChange: (name: string) => void
-  onAddMember: (name: string) => void
+  onAddMember: (name: string) => Promise<void>
 }) {
+  const [adding, setAdding] = useState(false)
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    const next = name.trim()
+    if (!next || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      if (!members.includes(next)) await onAddMember(next)
+      onIdentityChange(next)
+      setAdding(false)
+      setName('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
-    <select
-      className="identity-picker"
-      value={identity && members.includes(identity) ? identity : ''}
-      title="我是谁：批注署名 / 提交记录前缀"
-      onChange={(e) => {
-        if (e.target.value === '__add__') {
-          const name = window.prompt('添加成员（名字）：')?.trim()
-          if (name) {
-            onAddMember(name)
-            onIdentityChange(name)
+    <div className="identity-control">
+      <select
+        className="identity-picker"
+        value={identity && members.includes(identity) ? identity : ''}
+        title="我是谁：批注署名 / 提交记录前缀"
+        disabled={busy}
+        onChange={(e) => {
+          if (e.target.value === '__add__') {
+            setAdding(true)
+            setError(null)
+            return
           }
-          e.target.value = identity
-          return
-        }
-        onIdentityChange(e.target.value)
-      }}
-    >
-      <option value="">我是…</option>
-      {members.map((m) => (
-        <option key={m} value={m}>
-          {m}
-        </option>
-      ))}
-      <option value="__add__">＋ 添加成员…</option>
-    </select>
+          onIdentityChange(e.target.value)
+        }}
+      >
+        <option value="">我是…</option>
+        {members.map((m) => <option key={m} value={m}>{m}</option>)}
+        <option value="__add__">＋ 添加成员…</option>
+      </select>
+      {adding && (
+        <form className="identity-add" onSubmit={(e) => { e.preventDefault(); void submit() }}>
+          <label>
+            新成员名字
+            <input autoFocus aria-label="新成员名字" value={name} maxLength={100} disabled={busy}
+              onChange={(e) => setName(e.target.value)} />
+          </label>
+          <button type="submit" disabled={busy || !name.trim()}>{busy ? '保存中…' : '添加并选中'}</button>
+          <button type="button" disabled={busy} onClick={() => { setAdding(false); setError(null) }}>取消</button>
+          {error && <span role="alert" className="action-error">{error}</span>}
+        </form>
+      )}
+    </div>
   )
 }
 

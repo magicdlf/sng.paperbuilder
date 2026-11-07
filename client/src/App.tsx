@@ -433,12 +433,10 @@ export function App() {
             members={m.members ?? []}
             identity={identity}
             onIdentityChange={changeIdentity}
-            onAddMember={(name) =>
-              guard(async () => {
-                await api.addMember(name)
-                await reload()
-              })
-            }
+            onAddMember={async (name) => {
+              await api.addMember(name)
+              await reload()
+            }}
           />
         </div>
         <div className="header-right">
@@ -485,6 +483,12 @@ export function App() {
           onMove={handleMove}
         />
         <main className="app-main">
+          {!!snapshot.gitConflicts?.length && (
+            <div className="conflict-banner">
+              <span>Git 合并待完成：{snapshot.gitConflicts.join('、')}。论文暂为只读，请在外部解决并提交合并。</span>
+              <button type="button" className="btn" onClick={() => void reload().then(() => setRestoreVersion(n => n + 1))}>重新检查</button>
+            </div>
+          )}
           {browsing && (
             <div className="browse-banner">
               <span>
@@ -501,7 +505,7 @@ export function App() {
           )}
           {active && active.file ? (
             <>
-              {!browsing && (
+              {!browsing && !active.gitConflict && !snapshot.gitConflicts?.length && (
                 <SectionBar
                   section={active}
                   members={m.members ?? []}
@@ -509,7 +513,7 @@ export function App() {
                   onChangeMeta={(patch) => void handleSectionMetaChange(active.id, active.title, patch)}
                 />
               )}
-              {saveStates[active.id] === 'conflict' && (
+              {!active.gitConflict && !snapshot.gitConflicts?.length && saveStates[active.id] === 'conflict' && (
                 <div className="conflict-banner">
                   <span>⚠ 该章节已被他人修改，你的保存被拦下。</span>
                   <button
@@ -534,11 +538,19 @@ export function App() {
                   </button>
                 </div>
               )}
-              <Editor
+              {active.gitConflict ? (
+                <div className="git-conflict-view">
+                  <div className="conflict-banner">
+                    <span>本章有 Git 冲突，已暂停富文本编辑与保存。下方保留双方原文，请用 AI 或代码编辑器解决后重新检查。</span>
+                    <button type="button" className="btn" onClick={() => void reload().then(() => setRestoreVersion(n => n + 1))}>重新检查</button>
+                  </div>
+                  <pre>{active.md}</pre>
+                </div>
+              ) : <Editor
                 key={`${active.id}:${restoreVersion}:${browsing ? 'ro' : 'rw'}`}
                 sectionId={active.id}
                 initialMd={getMd(active.id)}
-                editable={!browsing}
+                editable={!browsing && !snapshot.gitConflicts?.length}
                 numbering={numbering}
                 onChangeMd={(md) => handleSectionChange(active.id, md)}
                 onReady={(editor) => {
@@ -547,7 +559,7 @@ export function App() {
                 }}
                 onSelectionChange={setHasSelection}
                 onCreateComment={handleCreateComment}
-              />
+              />}
             </>
           ) : active?.role === 'references' ? (
             <ReferencesPanel references={references} onChanged={setReferences} />

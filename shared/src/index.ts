@@ -1,4 +1,5 @@
 export * from './types.ts'
+export { hasGitConflictMarkers } from './gitConflict.ts'
 export { paperExtensions, getPaperSchema } from './extensions/index.ts'
 export {
   Figure,

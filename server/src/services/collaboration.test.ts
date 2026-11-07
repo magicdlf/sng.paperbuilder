@@ -4,11 +4,15 @@ import path from 'node:path'
 import os from 'node:os'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import { createApp } from '../app.ts'
+import { PaperManager } from './paperManager.ts'
 import { ProjectStore } from './projectStore.ts'
+import { api as clientApi } from '../../../client/src/api.ts'
 
 const roots: string[] = []
 afterEach(async () => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   await Promise.all(roots.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
 })
 async function fixture() {
@@ -29,6 +33,20 @@ async function git(dir: string, ...args: string[]) {
   return run('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', ...args], { cwd: dir })
 }
 describe('personal collaboration records and v1 compatibility', () => {
+  it('returns a newly added member through the project API without changing paper.json', async () => {
+    const { dir } = await fixture()
+    const manager = new PaperManager(path.resolve('template'))
+    await manager.open(dir)
+    const app = createApp({ manager, clientDist: null })
+    const before = await readFile(path.join(dir, 'paper.json'), 'utf8')
+    // Exercise the real frontend URL and request body, not just the backend route.
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) => app.request(url, init))
+    await clientApi.addMember('新成员')
+    const snapshot = await clientApi.project()
+    expect(snapshot.manifest.members).toContain('新成员')
+    expect(await readFile(path.join(dir, 'paper.json'), 'utf8')).toBe(before)
+  })
+
   it('merges real Git branches containing simultaneous claims without a conflict', async () => {
     const { store, dir, id } = await fixture()
     await git(dir, 'init', '-b', 'main')

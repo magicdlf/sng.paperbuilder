@@ -1,7 +1,8 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
-import { titleFromMd } from '@himcm/shared'
+import { GitService } from './gitService.ts'
+import { titleFromMd, hasGitConflictMarkers } from '@himcm/shared'
 import type {
   CommentsFile,
   PaperManifest,
@@ -103,7 +104,11 @@ export class ProjectStore {
   }
 
   async loadManifest(): Promise<PaperManifest> {
-    const raw = await fs.readFile(this.manifestPath, 'utf8')
+    let raw = await fs.readFile(this.manifestPath, 'utf8')
+    if (hasGitConflictMarkers(raw)) {
+      // Show the last local committed structure while the working tree is in conflict.
+      raw = await new GitService(this.paperDir).committedFile('paper.json')
+    }
     const parsed: unknown = JSON.parse(raw)
     assertManifest(parsed)
     return parsed
@@ -137,6 +142,7 @@ export class ProjectStore {
       title: titleFromMd(md) ?? meta.id,
       owner: meta.owner ?? null,
       status: meta.status ?? 'draft',
+      gitConflict: hasGitConflictMarkers(md),
       hash: contentHash(md),
     }
   }
@@ -144,7 +150,7 @@ export class ProjectStore {
   async snapshot(): Promise<ProjectSnapshot> {
     const manifest = await this.loadManifest()
     const sections = await Promise.all(manifest.sections.map((meta) => this.readSectionContent(meta)))
-    return this.applyCollaboration({ paperDir: this.paperDir, manifest, sections })
+    return this.applyCollaboration({ paperDir: this.paperDir, manifest, sections, gitConflicts: await new GitService(this.paperDir).unmergedFiles() })
   }
 
   /**
@@ -156,6 +162,13 @@ export class ProjectStore {
     const meta = this.sectionMeta(manifest, id)
     if (!meta.file) throw new HttpError(400, `章节 ${id} 没有可写文件（自动生成的章节）`)
     const abs = path.join(this.paperDir, meta.file)
+    let disk = ''
+    try { disk = await fs.readFile(abs, 'utf8') } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
+    }
+    if (hasGitConflictMarkers(disk) || hasGitConflictMarkers(md)) {
+      throw new HttpError(409, 'Git 冲突尚未解决：禁止保存或强制覆盖，请先在外部解决冲突')
+    }
     if (baseHash && !force) {
       let current = ''
       try {
@@ -209,7 +222,9 @@ export class ProjectStore {
       if (!/^[a-f0-9]{64}$/.test(namespace)) continue
       const files = await fs.readdir(path.join(dir, namespace))
       for (const file of files.filter(f => /^\d{16}-[a-f0-9-]+\.json$/.test(f)).sort()) {
-        const record = JSON.parse(await fs.readFile(path.join(dir, namespace, file), 'utf8'))
+        const raw = await fs.readFile(path.join(dir, namespace, file), 'utf8')
+        if (hasGitConflictMarkers(raw)) continue
+        const record = JSON.parse(raw)
         if (record.version !== 1 || typeof record.user !== 'string' ||
           crypto.createHash('sha256').update(record.user).digest('hex') !== namespace ||
           (record.claimed !== undefined && typeof record.claimed !== 'boolean') ||

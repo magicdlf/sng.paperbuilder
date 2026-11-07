@@ -8,7 +8,7 @@ import {
   mdToDoc,
   type CompileResult,
 } from '@himcm/shared'
-import type { ProjectStore } from './projectStore.ts'
+import { HttpError, type ProjectStore } from './projectStore.ts'
 import { aiReportPageFromAux, mapErrorsToSections, parseTexLog } from './logParser.ts'
 
 const execFileAsync = promisify(execFile)
@@ -25,6 +25,9 @@ export class LatexService {
   /** 组装 build/paper.tex（+ 复制 assets 使 build 目录自包含，可直接上传 Overleaf） */
   async exportTex(): Promise<{ texPath: string; lineMap: Array<{ line: number; sectionId: string }>; warnings: string[]; engine: 'pdflatex' | 'xelatex' }> {
     const snapshot = await this.store.snapshot()
+    if (snapshot.gitConflicts?.length || snapshot.sections.some(s => s.gitConflict)) {
+      throw new HttpError(409, 'Git 冲突尚未解决，暂不能导出或编译 PDF')
+    }
     const refs = await this.store.loadReferences()
 
     let warnings: string[] = []

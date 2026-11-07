@@ -54,6 +54,7 @@ export interface SectionContent {
   owner?: string | null
   status?: SectionStatus
   /** 从个人协作记录汇总；owner 保留为旧接口兼容字段 */
+  gitConflict?: boolean
   owners?: string[]
   contributions?: { user: string; claimed: boolean; status?: SectionStatus }[]
   /** 磁盘内容哈希（并发保存冲突检测的基准） */
@@ -62,6 +63,7 @@ export interface SectionContent {
 
 export interface ProjectSnapshot {
   paperDir: string
+  gitConflicts?: string[]
   manifest: PaperManifest
   sections: SectionContent[]
 }

@@ -87,7 +87,7 @@ export function SectionList({ snapshot, activeId, saveStates, onSelect, onCreate
                   {s.file && status !== 'draft' && (
                     <span className={`status-dot ${status}`} title={status === 'review' ? '待评审' : '已完成'} />
                   )}
-                  {s.title}
+                  {s.gitConflict && <span title="Git 冲突待解决">⚠ </span>}{s.title}
                 </span>
                 <span className="section-badges">
                   {(s.owners?.length || s.owner) && (

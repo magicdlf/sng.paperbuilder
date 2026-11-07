@@ -44,7 +44,7 @@ export const api = {
       `/api/sections/${encodeURIComponent(id)}`,
       jsonInit('PUT', { md, baseHash, force })
     ),
-  addMember: (user: string) => request('/members', jsonInit('POST', { user })),
+  addMember: (user: string) => request('/api/members', jsonInit('POST', { user })),
   patchSectionMeta: (id: string, patch: { user: string; claimed?: boolean; status?: string }) =>
     request<{ meta: unknown }>(`/api/sections/${encodeURIComponent(id)}/meta`, jsonInit('PATCH', patch)),
   createSection: (title: string, afterId?: string) =>

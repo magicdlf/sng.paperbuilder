@@ -12,9 +12,14 @@ export function apiRoutes(ctx: ApiContext): Hono {
   // 当前论文可被切换，必须每次请求时取，不可解构缓存
   const cur = () => ctx.manager.current
 
+  const assertMergeResolved = async () => {
+    if ((await cur().git.unmergedFiles()).length) throw new HttpError(409, 'Git 冲突尚未解决：当前论文只读，请在外部完成合并后刷新')
+  }
+
   /** 浏览历史版本（detached）期间拒绝一切写入，防止污染检出的工作区 */
   const assertWritable = async () => {
     const st = await cur().git.status()
+    await assertMergeResolved()
     if (st.detached) throw new HttpError(423, '正在浏览历史版本（只读），「回到最新」后再修改')
   }
 
@@ -162,6 +167,7 @@ export function apiRoutes(ctx: ApiContext): Hono {
 
   // 版本浏览与还原
   api.post('/git/checkout', async (c) => {
+    await assertMergeResolved()
     const body = await c.req.json<{ rev?: string }>()
     if (!body.rev) throw new HttpError(400, '需要 rev')
     await cur().git.checkout(body.rev)
@@ -169,11 +175,13 @@ export function apiRoutes(ctx: ApiContext): Hono {
   })
 
   api.post('/git/checkout-latest', async (c) => {
+    await assertMergeResolved()
     await cur().git.checkoutLatest()
     return c.json({ ok: true })
   })
 
   api.post('/git/revert-to', async (c) => {
+    await assertMergeResolved()
     const body = await c.req.json<{ rev?: string; message?: string }>()
     if (!body.rev) throw new HttpError(400, '需要 rev')
     const result = await cur().git.revertProjectTo(body.rev, body.message || `还原项目至 ${body.rev.slice(0, 7)}`)

@@ -132,10 +132,21 @@ export class GitService {
     return this.commitAll(message)
   }
 
+  async unmergedFiles(): Promise<string[]> {
+    if (!(await this.isRepo())) return []
+    return (await this.git(['diff', '--name-only', '--diff-filter=U', '-z'])).split('\0').filter(Boolean)
+  }
+
+  async committedFile(file: string): Promise<string> {
+    const prefix = (await this.git(['rev-parse', '--show-prefix'])).trim()
+    return this.showFile('HEAD', `${prefix}${file}`)
+  }
+
   async commitAll(message: string): Promise<GitCommitResult> {
     const status = await this.status()
     if (!status.isRepo) throw new Error('论文目录不是 git 仓库')
     if (status.changedFiles.length === 0) return { committed: false, hash: null }
+    if ((await this.unmergedFiles()).length) throw new Error('Git 合并尚未解决，请先在外部完成冲突处理和合并提交')
     await this.git(['add', '-A'])
     await this.git(['commit', '-m', message])
     const hash = (await this.git(['rev-parse', 'HEAD'])).trim()

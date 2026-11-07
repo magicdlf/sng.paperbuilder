@@ -795,3 +795,27 @@
     background: transparent;
   }
 }
+
+/* Keep member creation inside the page: native prompts are unreliable in embedded browsers. */
+.identity-control { position: relative; }
+.identity-add {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: min(320px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #222;
+  box-shadow: 0 4px 16px #0002;
+}
+.identity-add label { display: grid; gap: 6px; width: 100%; }
+.identity-add input { min-width: 0; padding: 6px 8px; }
+.identity-add [role="alert"] { white-space: normal; width: 100%; }
+
+.git-conflict-view pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 24px; margin: 0; font: 14px/1.7 monospace; }
